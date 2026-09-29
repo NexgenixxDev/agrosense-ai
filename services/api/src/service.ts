@@ -306,17 +306,18 @@ export class AppService {
         throw new BadRequestException("Add a photograph first");
       if (
         this.db.one(
-          "SELECT COUNT(*) AS n FROM jobs j JOIN cases c ON c.id=j.case_id WHERE c.owner_id=? AND c.created_at>?",
+          "SELECT COUNT(*) AS n FROM jobs j JOIN cases c ON c.id=j.case_id WHERE c.owner_id=? AND j.created_at>?",
           a.id,
-          new Date(Date.now() - 3600000).toISOString(),
+          Date.now() - 3600000,
         ).n >= 20
       )
         throw new BadRequestException("Hourly analysis limit reached");
       const jobId = id();
       this.db.run(
-        "INSERT INTO jobs (id,case_id,available_at) VALUES (?,?,?)",
+        "INSERT INTO jobs (id,case_id,available_at,created_at) VALUES (?,?,?,?)",
         jobId,
         key,
+        Date.now(),
         Date.now(),
       );
       this.db.run(

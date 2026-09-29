@@ -214,3 +214,25 @@ test("reminder synchronization is idempotent and isolated by owner", () => {
   assert.equal(s.reminders(other).length, 0);
   db.db.close();
 });
+test("hourly analysis limit counts queued jobs, not case age", () => {
+  const { s, db } = setup();
+  const twoHoursAgo = new Date(Date.now() - 2 * 3600000).toISOString();
+  const cases = Array.from({ length: 21 }, (_, n) => {
+    const c = s.createCase(farmer, submission());
+    db.run("UPDATE cases SET created_at=? WHERE id=?", twoHoursAgo, c.id);
+    db.run(
+      "INSERT INTO images VALUES (?,?,?,?,?,?)",
+      id(),
+      c.id,
+      "unused.jpg",
+      "checksum-" + n,
+      "image/jpeg",
+      now(),
+    );
+    return c;
+  });
+  for (const c of cases.slice(0, 20)) s.queue(farmer, c.id);
+  assert.throws(() => s.queue(farmer, cases[20].id), /Hourly analysis limit/);
+  db.run("UPDATE jobs SET created_at=?", Date.now() - 2 * 3600000);
+  assert.equal(s.queue(farmer, cases[20].id).state, "queued");
+});
