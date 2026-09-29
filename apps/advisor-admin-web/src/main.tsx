@@ -838,41 +838,50 @@ function App() {
               {!selected.followups.length && (
                 <p className="muted">No follow-up recorded.</p>
               )}
-              {admin && (
-                <div className="form-section">
-                  <h3>Assign an advisor</h3>
-                  <select
-                    value={advisor}
-                    onChange={(e) => setAdvisor(e.target.value)}
-                  >
-                    {users
-                      .filter((u) => u.roles.includes("advisor"))
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    className="primary"
-                    disabled={busy}
-                    onClick={() =>
-                      act(async () => {
-                        setSelected(
-                          await api(
-                            `/admin/cases/${selected.id}/assignment`,
-                            "POST",
-                            { advisor_id: advisor },
-                          ),
-                        );
-                        await load();
-                      })
-                    }
-                  >
-                    Assign review
-                  </button>
-                </div>
-              )}
+              {admin &&
+                !["requested", "assigned"].includes(selected.review_state) && (
+                  <p className="muted">
+                    {selected.review_state === "not_requested"
+                      ? "The farmer has not requested an advisor review."
+                      : "This review has been answered."}
+                  </p>
+                )}
+              {admin &&
+                ["requested", "assigned"].includes(selected.review_state) && (
+                  <div className="form-section">
+                    <h3>Assign an advisor</h3>
+                    <select
+                      value={advisor}
+                      onChange={(e) => setAdvisor(e.target.value)}
+                    >
+                      {users
+                        .filter((u) => u.roles.includes("advisor"))
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      className="primary"
+                      disabled={busy}
+                      onClick={() =>
+                        act(async () => {
+                          setSelected(
+                            await api(
+                              `/admin/cases/${selected.id}/assignment`,
+                              "POST",
+                              { advisor_id: advisor },
+                            ),
+                          );
+                          await load();
+                        })
+                      }
+                    >
+                      Assign review
+                    </button>
+                  </div>
+                )}
               {user.roles.includes("advisor") && (
                 <form
                   className="form-section"

@@ -364,6 +364,17 @@ export class AppService {
     if (!advisor || !JSON.parse(advisor.roles).includes("advisor"))
       throw new BadRequestException("Select an advisor");
     this.db.tx(() => {
+      // Advisors see only what the farmer asked to have reviewed; a response is not reopened.
+      const { review_state } = this.db.one(
+        "SELECT review_state FROM cases WHERE id=?",
+        key,
+      );
+      if (!["requested", "assigned"].includes(review_state))
+        throw new ConflictException(
+          review_state === "not_requested"
+            ? "The farmer has not requested a review"
+            : "This review has already been answered",
+        );
       this.db.run(
         "UPDATE cases SET advisor_id=?,review_state='assigned',updated_at=? WHERE id=?",
         advisor.id,

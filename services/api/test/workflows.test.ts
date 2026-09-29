@@ -236,3 +236,22 @@ test("hourly analysis limit counts queued jobs, not case age", () => {
   db.run("UPDATE jobs SET created_at=?", Date.now() - 2 * 3600000);
   assert.equal(s.queue(farmer, cases[20].id).state, "queued");
 });
+test("assignment requires a farmer's review request and never reopens a response", () => {
+  const { s, db } = setup();
+  const c = s.createCase(farmer, submission());
+  assert.throws(
+    () => s.assign(admin, c.id, { advisor_id: advisor.id }),
+    /not requested a review/,
+  );
+  assert.equal(s.listCases(advisor, "advisor").length, 0);
+  s.requestReview(farmer, c.id);
+  s.assign(admin, c.id, { advisor_id: advisor.id });
+  s.assign(admin, c.id, { advisor_id: advisor.id });
+  s.respond(advisor, c.id, { response: "Please add a whole-plant photo." });
+  assert.throws(
+    () => s.assign(admin, c.id, { advisor_id: advisor.id }),
+    /already been answered/,
+  );
+  assert.equal(s.detail(farmer, c.id).review_state, "responded");
+  db.db.close();
+});
