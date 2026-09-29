@@ -1,5 +1,6 @@
 services:
   api:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: infra/Dockerfile.api
@@ -12,6 +13,7 @@ services:
     ports: ["127.0.0.1:4100:4100"]
     depends_on: [ai]
   worker:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: infra/Dockerfile.api
@@ -24,6 +26,7 @@ services:
     volumes: [agrosense-data:/data]
     depends_on: [api, ai]
   ai:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: infra/Dockerfile.ai
