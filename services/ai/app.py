@@ -14,7 +14,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from PIL import Image, ImageStat, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-load_dotenv(Path(__file__).resolve().parents[2] / '.env')
+# Local runs read the repository .env; containers (/app/app.py) get env from compose.
+_parents = Path(__file__).resolve().parents
+if len(_parents) > 2:
+    load_dotenv(_parents[2] / '.env')
 Image.MAX_IMAGE_PIXELS = 24_000_000
 app = FastAPI(title='AgroSense inference service', version='0.1.0')
 
