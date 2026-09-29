@@ -785,15 +785,32 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
                       style: const TextStyle(fontSize: 12),
                     ),
                     onChanged: (v) => action(() async {
+                      final due = DateTime.parse(r['due_at']).toLocal();
+                      bool scheduled = false;
+                      if (v!) {
+                        await reminders.cancel(r['id']);
+                      } else if (due.isAfter(DateTime.now())) {
+                        // Unticking restores the notification that ticking cancelled.
+                        try {
+                          scheduled = await reminders.schedule(
+                            r['id'],
+                            r['title'],
+                            due,
+                          );
+                        } catch (_) {
+                          scheduled = false;
+                        }
+                      }
                       await farm.db.update(
                         'reminders',
-                        {'completed': v! ? 1 : 0, 'synced': 0},
+                        {
+                          'completed': v ? 1 : 0,
+                          'synced': 0,
+                          'scheduled': scheduled ? 1 : 0,
+                        },
                         where: 'id=?',
                         whereArgs: [r['id']],
                       );
-                      if (v) {
-                        await reminders.cancel(r['id']);
-                      }
                       farm.sync();
                     }),
                   ),
