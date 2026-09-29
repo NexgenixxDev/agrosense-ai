@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    env_file: ../.env
+    environment:
+      DATABASE_PATH: /data/agrosense.sqlite
+      IMAGE_PATH: /data/images
+      AI_URL: http://ai:8100
+    volumes: [agrosense-data:/data]
+    ports: ["127.0.0.1:4100:4100"]
+    depends_on: [ai]
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    command: [node, dist/worker.js]
+    env_file: ../.env
+    environment:
+      DATABASE_PATH: /data/agrosense.sqlite
+      IMAGE_PATH: /data/images
+      AI_URL: http://ai:8100
+    volumes: [agrosense-data:/data]
+    depends_on: [api, ai]
+  ai:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.ai
+    env_file: ../.env
+volumes:
+  agrosense-data:

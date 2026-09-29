@@ -1,0 +1,763 @@
+ AgroSense AI project proposal and Codex
+ build brief
+ An AI powered crop health advisor for smallholder farmers in Namibia
+
+ Prepared for Martin Kristof • 29 September 2026
+
+ Status: proposed product and implementation brief, subject to field validation
+
+
+ 1 Executive proposal
+ We propose AgroSense AI, an Android-first mobile application supported by a web portal for agricultural advisors and
+ administrators. A farmer photographs an affected crop, answers a few simple questions, and receives possible
+ causes, practical next steps, and an option to request expert review. The app also keeps crop records, supports
+ follow-up photographs, and provides water-management reminders appropriate to the farmer’s circumstances.
+
+ The proposed problem is that smallholder farmers lose crops to diseases, pests, and water stress, while timely
+ agricultural advice may be difficult to obtain. The extent of these losses and the delay in accessing extension support
+ in the intended pilot communities must be established through research. This proposal does not claim that local
+ interviews, market sizing, or field trials have already been completed.
+
+ The first release should demonstrate a complete working journey from photo capture to a real AI response, approved
+ advice, expert review, and follow-up. It should be usable on affordable smartphones and tolerate interrupted
+ connectivity. Its role is to support early decisions and access to advice; a photograph alone cannot confirm every
+ disease or determine an exact irrigation requirement.
+
+ Proposed positioning: locally relevant crop support that combines visual AI, reviewed guidance, and human
+ follow-up for farmers in Namibia.
+
+
+ 2 Alignment with the supplied scenario
+ The supplied scenario table names AgroSense AI under AgriTech, covering Namibia and Southern Africa, with
+ computer vision for crop disease detection through photo uploads. The second image requires problem validation, a
+ distinct solution, a specific AI approach, credible business numbers, and an interactive MVP.
+
+   Assignment requirement                         Evidence or deliverable proposed
+
+
+   Validate the problem                           Published sources, farmer interviews, advisor interviews, and documented baseline
+                                                  access to advice
+
+
+   Define the solution                            Farmer app, advisor workflow, admin portal, and a bounded first release
+
+
+   Explain the AI                                 Image model, supported classes, training data, uncertainty handling, and local evaluation
+
+
+   Know the numbers                               Sourced market inputs, dated supplier quotes, pilot costs, and scenario calculations
+
+
+   Build a real MVP                               Installable app, working backend, real inference, database persistence, and interactive
+                                                  web portal
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                             1
+Farmer mobile application
+Home, photo capture and crop assessment
+
+
+
+
+Home gives farmers one clear action. Capture guides the photo. Results explain uncertainty and offer advisor review.
+Concept illustration only. Sample plant images and screen content are not diagnostic evidence.                         2
+Advisor and administration system
+Case queue, assessment history and expert response
+
+
+
+
+Advisors review assigned cases and respond. Administrators manage users, crop coverage and published guidance.
+Concept illustration only. All counts and records are sample data. Menu access must follow each user’s permissions.   3
+ 3 Evidence and problem validation
+ What published evidence supports
+ The Namibian Agronomic Board identifies mahangu, white maize, and wheat as staple grain crops within its
+ agronomy work [1]. This supports treating mahangu as an important local product requirement, even if reliable AI
+ coverage for it is unavailable initially.
+
+ FAO describes weather variability and the importance of climate-resilient practices in Namibia. It also notes
+ constraints on irrigation for smallholder dryland production [2]. The product should therefore distinguish rain-fed
+ farming from irrigated farming instead of assuming every user can water a crop on demand.
+
+ FAO’s integrated pest management guidance supports considering several control approaches and limiting
+ unnecessary pesticide use [3]. AgroSense should prioritize reviewed, context-appropriate guidance rather than
+ automatically recommending a chemical for every photo.
+
+ These sources establish context. They do not establish the percentage of Namibian harvest losses caused by
+ delayed advice, the number of addressable smartphone users, or willingness to pay.
+
+ Proposed primary research
+ Interview approximately 15-20 farmers, 3-5 agricultural advisors, and 2-3 cooperative or agricultural programme
+ representatives before fixing the pilot scope. These are proposed research sample sizes, not completed interviews or
+ statistically representative national estimates.
+
+ Ask farmers which crops they grow; whether production is rain-fed or irrigated; how they recognize crop problems;
+ whom they ask for help; how long advice takes; what happened in their most recent affected season; what phone,
+ language, and data access they have; and whether they would use a photo-based service. Ask permission before
+ recording personal details or crop images.
+
+ Ask advisors which problems can be assessed visually, which require field or laboratory confirmation, which crop
+ treatments are appropriate locally, and how many digital cases they could realistically review. Ask potential
+ institutional buyers what outcomes and reporting would justify a paid pilot.
+
+ Record interview date, participant category, anonymized notes, supporting evidence, and limitations. Separate a
+ farmer’s estimated loss from a measured loss. Select one pilot cluster with a committed advisor and accessible
+ farmers; northern crop-growing areas are candidates, not confirmed launch sites.
+
+
+ 4 Users and product scope
+
+   User                                           Main capabilities
+
+
+   Farmer                                         Register, add fields and crops, photograph problems, receive advice, request review,
+                                                  track outcomes
+
+
+   Agricultural advisor                           Review assigned cases, ask questions, correct suggested causes, publish a case
+                                                  response, schedule follow-up
+
+
+   Administrator                                  Manage access, supported crops, content publication, model configuration, and service
+                                                  monitoring
+
+
+   Content reviewer                               Approve crop guidance and translations with references and review dates
+
+
+ One person may hold both advisor and content-review permissions. Administrators do not receive agronomic
+ publishing authority automatically. Institutional reporting should use aggregated data rather than exposing individual
+ farms by default.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                           4
+                                                                                                                                          2
+ Included in the MVP
+  • Android farmer app with camera and gallery input.
+
+  • A small, explicitly supported set of crop-condition combinations.
+
+  • Photo quality checks, symptom questions, real AI analysis, and uncertain-result handling.
+
+  • Reviewed advice cards with sources and follow-up actions.
+
+  • Case history, offline drafts, cached guidance, and reconnect synchronization.
+
+  • Field profiles distinguishing rain-fed and irrigated production.
+
+  • Farmer-scheduled inspection and watering reminders; advice rules reviewed before release.
+
+  • Advisor case queue and case detail screen.
+
+  • Admin management of crops, advice, users, and audit records.
+
+  • Outcome feedback and basic operational reporting.
+
+ Deferred until after a successful pilot
+ Fully offline diagnosis, reliable disease outbreak alerts, IoT moisture sensors, satellite analysis, automatic irrigation
+ control, marketplace sales, lending, insurance, open community chat, and broad Southern African deployment. Do not
+ build these into the first release.
+
+
+ 5 Crop coverage and language
+ Create a crop catalogue that can represent mahangu, maize, sorghum, and common horticultural crops. This
+ catalogue is not a promise that the AI recognizes every crop or condition.
+
+ For the technical MVP, start with tomato and maize only if a suitable licensed model or dataset supports the selected
+ conditions. Display the exact supported conditions in the app. Include mahangu in field records, reviewed learning
+ material, and advisor referrals from the beginning; enable automatic mahangu diagnosis only after a suitable model
+ has passed local evaluation. Confirm the final pilot crop selection with farmers and advisors.
+
+ Start with plain English and translation-ready screens. Select the first additional local language through pilot research,
+ for example Oshikwanyama or Oshindonga for a relevant community. Do not label every language variant as a
+ completed translation or present machine-translated agronomic instructions as reviewed. Human-reviewed audio
+ guidance is a later accessibility enhancement.
+
+
+ 6 Farmer application
+ Use four main navigation items: Home, Check Crop, My Farm, and Help. Keep the most important action, “Check
+ my crop,” visible on the home screen.
+
+ First use
+ Explain the service in a few short screens. Allow browsing of general guidance without registration. Require an
+ account before submitting a case to the server or contacting an advisor. Use phone verification when a real SMS
+ provider is configured; development authentication must be visibly separate and disabled in production.
+
+ Ask for preferred language, region, and the crops grown. Precise location is optional. Allow manual region selection
+ when location permission is denied. Farmers can add a field name, crop, planting date if known, and rain-fed or
+ irrigated status.
+
+ Crop check journey
+  1. The farmer selects a crop and optionally a field.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                               5
+                                                                                                                              3
+  2. The app requests a clear close-up and, when useful, a whole-plant photograph. Explain how to avoid blur,
+     shadows, and unrelated subjects.
+
+  3. The farmer answers short questions about affected plant parts, duration, visible insects, how widespread
+     symptoms are, and recent watering or rainfall.
+
+  4. The app saves a local draft immediately. It uploads when connectivity permits and displays progress honestly.
+
+  5. The result shows a likely cause or an explicit “Unable to identify reliably” message. It can show up to three
+     plausible candidates when supported by the model.
+
+  6. A reviewed guidance card explains what to check next, possible actions, prevention, and when expert review is
+     needed. Show its source and review date.
+
+  7. The farmer can request an advisor review, save a reminder, or record an action taken.
+
+  8. A follow-up asks whether the crop improved, stayed the same, or worsened and allows another photo.
+
+ Never interpret a healthy-looking photograph as proof that the entire crop is disease-free. Do not describe an AI
+ suggestion as an expert-confirmed diagnosis.
+
+ Low-connectivity behaviour
+ Offline users can capture drafts, view saved cases, access downloaded guidance, and receive local reminders. New
+ cloud analysis waits for connectivity. Show “Saved on this phone - waiting to upload” rather than a simulated result.
+
+ Compress images while preserving visible symptoms, with an initial target of 300-700 KB per photo and a retake or
+ higher-quality option where detail is insufficient. These are design targets to test, not guaranteed diagnostic limits.
+ Use retry with backoff and idempotent submissions. Let the user delete an unsent draft or retry a failed upload.
+
+ Provisional test device: Android 10 or later with 2 GB RAM. Reassess this minimum after checking actual pilot phones
+ and dependencies. Keep animations light, allow text enlargement, and use buttons approximately 48 logical pixels
+ high or larger. Do not rely on colour alone for status.
+
+ Visual direction
+ Use a warm, agricultural theme: dark green #166534, light background #F7FAF5, dark text #17251C, and amber
+ #B45309 for caution. Verify contrast in implementation. Use Arial throughout the app and web portal, approximately
+ 16-18 logical pixels for body text, clear crop illustrations, familiar icons with text labels, and short sentences. Show
+ one main task per screen.
+
+
+ 7 Advisor and administrator web system
+ The advisor dashboard contains an assigned-case queue, filters by crop and case state, and a case detail view. Case
+ details include farmer-provided symptoms, permissioned photos, AI candidates, reviewed advice shown, and previous
+ follow-ups. Advisors can request another photo, record a correction with a reason, and issue a response.
+
+ Maintain separate labels for AI suggestion, advisor reviewed, and laboratory confirmed. The last label requires
+ recorded supporting evidence. If no advisor is assigned or available, communicate that clearly and show only verified
+ contact alternatives. Do not promise immediate responses without staffing.
+
+ The administrator dashboard manages accounts, advisor assignments, crop support, model versions, advice
+ publication, translations, and service health. Content moves through draft, review, publication, and retirement. Retain
+ version history so each farmer result can be traced to the advice and model used at that time.
+
+ An initial report should show submissions, processing failures, supported versus unsupported crops, review requests,
+ response times, follow-up completion, and cost per analysis. A map or counts of submissions must not be described
+ as measured disease prevalence.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                             6
+                                                                                                                            4
+ 8 AI design and safeguards
+ The specific AI task
+ Use supervised computer vision to classify supported crop-condition combinations from photographs. The pipeline
+ combines image-quality checks, crop context, an image classifier or specialized inference provider, and a
+ deterministic decision layer. Symptom answers support triage and expert review; do not claim the model uses them
+ unless the selected model actually accepts and evaluates those inputs.
+
+ AI is appropriate for visual pattern recognition at scale. Scheduling, permissions, notifications, guidance publication,
+ and most water reminders should use ordinary software rules. A general chatbot is not required for the MVP.
+
+ Inference pipeline
+  1. Validate the uploaded file type, dimensions, size, and decoded image content.
+
+  2. Check for unusable images or non-plant subjects and request a retake where appropriate.
+
+  3. Verify that the selected crop and requested assessment are supported.
+
+  4. Run real inference through a replaceable provider adapter.
+
+  5. Apply calibrated acceptance and abstention rules. Handle unknown conditions and conflicting evidence.
+
+  6. Retrieve a published advice card matching the crop and suggested condition.
+
+  7. Return the candidate causes, uncertainty state, advice version, model version, and escalation option.
+
+ Model confidence is not automatically a probability of diagnostic correctness. Do not invent confidence percentages or
+ use an LLM’s self-reported certainty as calibrated confidence. Hide numeric scores from farmers until validation
+ supports a clear interpretation. Never describe a fixed threshold such as 80% as scientifically validated merely
+ because it is configured.
+
+ For initial development, use either a licensed crop-diagnosis API whose coverage has been checked or a trained
+ image classifier served by the AI service. Decide after checking licensing, cost, supported crops, data handling, and
+ field performance. Plantix advertises a crop-diagnosis API, but access, pricing, and Namibia-specific suitability require
+ verification [6].
+
+ Data and evaluation
+ Use properly licensed public data for a baseline, then gather consented local field photos with qualified labels. Record
+ dataset provenance, licensing, crop, condition, region, collection context, and label confidence. Public benchmark
+ performance must not be presented as Namibian field accuracy. Published research illustrates that performance can
+ deteriorate substantially when test images differ from training conditions [4].
+
+ Split training, validation, and test data by farm and capture session where possible; remove duplicates and
+ near-duplicates across splits. Include varied lighting, backgrounds, devices, healthy samples, unsupported conditions,
+ water stress, and non-plant images. Keep an independent local test set and publish per-class sample counts,
+ precision, recall, confusion matrix, and abstention rate. Do not use farmer feedback as automatically correct training
+ labels.
+
+ Proposed supervised-pilot gate: a qualified reviewer agrees that each enabled class has adequate local evidence;
+ accepted predictions achieve at least 90% precision on the held-out local set, with sample counts and uncertainty
+ reported. This is a proposed target, not measured performance. Low coverage cannot be hidden by rejecting most
+ images: report acceptance rate and recall alongside precision. Classes without enough evidence remain expert-only.
+
+ Treatment guidance
+ Store advice in a reviewed knowledge base, not as unrestricted generated text. Prefer observation, prevention, and
+ appropriate integrated pest management options. A generated explanation, if added later, must stay within approved
+ content and retain references.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                              7
+                                                                                                                             5
+ Do not generate pesticide names, doses, mixing instructions, or harvest intervals from model memory. Chemical
+ recommendations require a qualified reviewer to verify the current local product authorization and crop-specific label;
+ record that source and date. If verified guidance is unavailable, withhold chemical instructions and refer the case. This
+ is a product safety requirement, not a claim that regulatory verification has already occurred.
+
+ Water management
+ A photo cannot determine soil moisture or an exact water requirement. The MVP supports manual watering logs,
+ observation prompts, and user-scheduled reminders. Any advice rule must account for rain-fed versus irrigated
+ production and available inputs. Weather integration is a later enhancement unless a provider is selected and tested;
+ show forecast source, timestamp, location, and missing-data states. Do not invent litres per plant or automatic
+ watering schedules from photos.
+
+
+ 9 Proposed technical architecture
+ Use a stack aligned with the intended mobile and web deliverables. Select supported dependency versions at
+ implementation time and lock them; this brief does not prescribe unverified version numbers.
+
+   Layer                             Proposed technology                      Responsibility
+
+
+   Farmer app                        Flutter and Dart                         Android UI, camera, local drafts, reminders,
+                                                                              synchronization
+
+
+   Local persistence                 SQLite                                   Drafts, cached cases, advice versions, pending
+                                                                              operations
+
+
+   Advisor and admin web             React with TypeScript                    Case review, content management, reporting
+
+
+   Application API                   NestJS with TypeScript                   Authentication, permissions, workflows, business
+                                                                              rules
+
+
+   Main database                     PostgreSQL                               Users, fields, cases, advice, reviews, audit
+                                                                              history
+
+
+   AI service                        Python with FastAPI                      Model or provider adapter, inference, result
+                                                                              validation
+
+
+   Photo storage                     Private S3-compatible object storage     Images accessed through short-lived signed
+                                                                              URLs
+
+
+   Background jobs                   Redis and BullMQ                         Asynchronous analysis, retry, and notification
+                                                                              jobs
+
+
+   Notifications                     Local device notifications and FCM       Reminders and remote case updates
+
+
+   Development                       Docker Compose                           Reproducible backend, database, queue, and AI
+                                                                              environment
+
+
+ The mobile and web clients call the API. The API records cases, authorizes image uploads, and schedules analysis. A
+ worker calls the private AI service, persists the result, and schedules notifications. The AI service does not expose
+ provider credentials to clients. Push messages should contain a generic update and case identifier, not sensitive crop
+ or location details.
+
+ Suggested repository folders
+  • apps/farmer-mobile/ - Flutter application.
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                8
+                                                                                                                               6
+  • apps/advisor-admin-web/ - React web portal.
+
+  • services/api/ - NestJS API and background worker entry point.
+
+  • services/ai/ - FastAPI inference and provider adapters.
+
+  • packages/contracts/ - OpenAPI schema and client-generation configuration.
+
+  • infra/ - Docker, deployment examples, and backup instructions.
+
+  • docs/ - setup, architecture, datasets, evaluation, and operating procedures.
+
+ Do not attempt to import TypeScript types directly into Dart. Generate or maintain Dart clients from the API contract.
+
+
+ 10 Data and API requirements
+ Core records
+ Use UUID identifiers, UTC timestamps, and explicit ownership. Display dates and reminder times using
+ Africa/Windhoek by default while respecting device settings where appropriate.
+
+   Record                                         Important fields
+
+
+   User                                           Role assignments, phone, language, account state
+
+
+   Farm and field                                 Owner, region, optional coordinates, crop, planting date, production type
+
+
+   Crop support                                   Crop, condition, inference support status, enabled model version
+
+
+   Case                                           Owner, field, crop, symptoms, client submission ID, processing state
+
+
+   Image                                          Case, object key, checksum, upload state, consent scope
+
+
+   Analysis                                       Model version, candidates, quality flags, abstention reason, timestamps
+
+
+   Advice version                                 Crop and condition, language, content, sources, reviewer, publication state
+
+
+   Expert review                                  Assigned advisor, response, correction reason, review state
+
+
+   Follow-up                                      Farmer observations, action taken, photos, outcome, timestamp
+
+
+   Reminder                                       Owner, field or case, type, time, completion state
+
+
+   Consent                                        Purpose, policy version, grant or withdrawal time
+
+
+   Audit event                                    Actor, action, resource, timestamp, relevant change metadata
+
+
+ Keep processing state separate from expert-review state. Suggested processing states are draft, uploading, queued,
+ processing, completed, and failed. Suggested review states are not_requested, requested, assigned, responded, and closed.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                 9
+                                                                                                                                7
+ Initial API surface
+
+   Route group                                    Intended operations
+
+
+   /auth                                          Request and verify OTP, refresh session, logout
+
+
+   /me                                            Profile, consent, device registration, export and deletion requests
+
+
+   /fields                                        Create and manage the farmer’s fields
+
+
+   /crops                                         Read catalogue and explicit inference coverage
+
+
+   /cases                                         Create idempotent submission, list own cases, read case detail
+
+
+   /cases/{id}/images                             Request upload authorization and confirm upload
+
+
+   /cases/{id}/analysis                           Request processing and retrieve its state or result
+
+
+   /cases/{id}/review                             Request review and retrieve permitted responses
+
+
+   /cases/{id}/follow-ups                         Submit observations and follow-up photos
+
+
+   /reminders                                     Create, update, complete, and synchronize reminders
+
+
+   /advice                                        Retrieve published content and version manifest
+
+
+   /advisor/cases                                 List assigned cases and submit authorized reviews
+
+
+   /admin                                         Users, assignments, content review, support configuration, reports
+
+
+ Document exact methods and schemas in OpenAPI. Enforce ownership and role checks on the server, including
+ object-storage access. Validate MIME content, cap upload sizes and analysis frequency, rotate refresh tokens,
+ rate-limit OTP attempts, and protect privileged accounts with stronger authentication. Store secrets in environment
+ configuration and redact personal data from logs.
+
+ Separate permission to process a case from optional permission to reuse images for model training. Explain retention
+ and third-party processing to users. Make deletion cover database records, derived data, images, and documented
+ backup-retention handling. Precise farm locations must not appear in public reports.
+
+
+ 11 Business case and financial validation
+ Proposed customer and revenue model
+ Farmers are the primary users. Cooperatives, NGOs, agricultural programmes, or other institutions could sponsor
+ access and advisor capacity. Test institution-funded access first, with core farmer use free during the pilot. Possible
+ paid services are programme dashboards, managed onboarding, and contracted support. These are commercial
+ hypotheses; no partner agreement or willingness to pay is established.
+
+ Plantix already offers photo-based crop diagnosis [5]. AgroSense cannot credibly claim the idea is new. Proposed
+ differentiation is Namibia-specific crop coverage, locally reviewed guidance, language support,
+ constrained-connectivity workflows, and accountable advisor follow-up. Test these differences against actual
+ alternatives before claiming superiority. Existing calls, messaging groups, field visits, and extension services are also
+ alternatives.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                              10
+                                                                                                                              8
+ Market sizing method
+ Do not use the entire population of Namibia as the market. Obtain a dated official count of relevant crop-farming
+ households and document definitions and source year. Estimate smartphone access and service eligibility through
+ appropriate evidence, then define the reachable pilot population with partners.
+
+  • TAM: eligible crop-farming households within the intended national scope.
+
+  • SAM: households meeting crop, region, device, language, and access requirements supported by the product.
+
+  • SOM: farmers realistically reachable through signed or evidenced distribution arrangements over the first year.
+
+ Report household and individual farmer measures separately. Do not multiply unrelated national percentages and
+ describe the result as an observed farmer count. Current numerical market size remains a research gap.
+
+ Cost and revenue worksheet
+ Collect dated, currency-specific quotes or published tariffs before submitting final business projections.
+
+   Input                             Evidence required                            Calculation
+
+
+   Build cost                        Scoped developer and design estimates        Person-days multiplied by quoted daily rates
+
+
+   Agronomy and translation          Reviewer and translator quotes               Hours or content units multiplied by rate
+
+
+   Data collection                   Fieldwork and annotation estimates           Visits, transport, consent work, and labelled
+                                                                                  images
+
+
+   Hosting and storage               Provider plan and usage tariffs              Base services plus compute, storage, backups,
+                                                                                  and egress
+
+
+   AI                                Real inference pricing or measured serving   Analyses multiplied by cost per analysis,
+                                     cost                                         including retries
+
+
+   Messaging                         Namibia route and provider tariff            OTP and SMS volume multiplied by unit cost
+
+
+   Expert review                     Staffing cost and observed review rate       Cases multiplied by review share and cost per
+                                                                                  review
+
+
+   Support and acquisition           Onboarding and support evidence              Cohorts, training visits, support hours, and travel
+
+
+   Revenue                           Buyer interviews and contract evidence       Paying institutions multiplied by contract fee
+
+
+ Monthly contribution = recurring revenue minus variable delivery costs. Monthly operating result = contribution minus
+ fixed operating costs. Break-even institution count = fixed costs divided by contribution per institution, rounded up; if
+ contribution is zero or negative, increasing sales alone does not produce break-even.
+
+ Prepare low, base, and high adoption scenarios with transparent inputs and sensitivity to expert-review demand,
+ inference volume, farmer activity, and sponsor churn. Include initial setup, taxes where applicable, exchange-rate
+ assumptions for foreign services, and contingency separately. No monetary total is asserted here because supplier
+ quotes and buyer evidence have not been collected. An illustrative spreadsheet must be labelled as assumptions, not
+ market research.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                    11
+                                                                                                                                    9
+ 12 Delivery plan and pilot measures
+ Indicative implementation effort is 8-12 weeks for a small capable team after access to a viable model and approved
+ initial content. This is a planning assumption, not a quotation; local dataset creation or model training may extend it
+ substantially.
+
+   Phase                                          Output and completion gate
+
+
+   Discovery                                      Interviews, bounded crop support, first advice reviewed, provider and data decisions
+                                                  documented
+
+
+   Foundation                                     Repository, migrations, authentication, permissions, field profiles, mobile navigation
+
+
+   Working crop check                             Capture, upload, real inference, result persistence, reviewed advice, uncertain result path
+
+
+   Advisor workflow                               Review request, assignment, response, notification, follow-up
+
+
+   Reliability                                    Offline drafts, reconnect recovery, ownership tests, content versioning, monitoring
+
+
+   Supervised pilot                               Device tests, local AI evaluation, observed farmer sessions, issue fixes, operating
+                                                  handover
+
+
+ For a first pilot, propose approximately 30-50 consenting farmers and 2-3 advisors for 6-8 weeks, subject to capacity
+ and crop season. This pilot can evaluate usability and operations; it cannot by itself prove national impact or a reliable
+ percentage reduction in harvest losses.
+
+ Track scan completion, failed uploads, processing latency, data consumed, accepted-prediction precision, abstention
+ rate, expert corrections, response times, repeat use, and understanding of advice. Compare time-to-advice with each
+ farmer’s reported baseline. Measure crop outcomes with agronomic support and acknowledge weather, crop stage,
+ and other confounders. Do not promise yield increases before evidence exists.
+
+
+ 13 MVP acceptance criteria
+  1. A farmer can register in the configured environment, add a field, capture a photo, submit it, and reopen the
+     persisted result after restarting the app.
+
+  2. At least one explicitly supported crop-condition set uses real inference. Test fixtures are clearly marked and never
+     used as a hidden production fallback.
+
+  3. Blurry, non-plant, unsupported, and uncertain inputs have appropriate retake, abstention, or review flows.
+
+  4. An offline draft survives app restart and uploads once after reconnecting; repeat requests do not create duplicate
+     cases or billable jobs.
+
+  5. Every displayed treatment card is published, versioned, sourced, and traceable to a reviewer. No model-generated
+     chemical instructions appear.
+
+  6. A farmer can request review; an assigned advisor can respond; the farmer can retrieve the response even if push
+     delivery fails.
+
+  7. A farmer cannot access another farmer’s data by changing a URL or identifier. Advisors see only their authorized
+     scope.
+
+  8. A denied camera, storage, location, or notification permission results in a usable alternative or clear explanation.
+
+  9. Processing retries, provider timeouts, expired uploads, and notification failures have recoverable states and useful
+     logs.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                                            12
+                                                                                                                                           10
+  10. Local reminders work without network access. Weather or water advice is never fabricated when inputs are
+     unavailable.
+
+  11. The agreed low-end test phone completes core flows without crashes. Set and measure performance budgets;
+     an initial goal is a cached home screen within three seconds and typical online analysis within thirty seconds on
+     the documented test network.
+
+  12. Installation, configuration, database migration, sample-data setup, model coverage, evaluation limitations, and
+     deployment steps are documented.
+
+
+ 14 Instructions to give Codex
+ Copy the following instruction with this file attached to your coding session.
+
+     Build AgroSense AI using this proposal as the product and technical specification. The required deliverables are
+     a Flutter Android farmer app, a React TypeScript advisor and administrator portal, a NestJS API with
+     PostgreSQL, and a replaceable Python AI service. Start by inspecting the existing repository and its instructions,
+     if any, and preserve unrelated work.
+
+     Implement the MVP in working vertical slices. Begin with a farmer adding a field, capturing a crop photo, saving a
+     case, running real inference for an explicitly supported crop, and receiving reviewed guidance. Then add the
+     advisor review journey, offline draft synchronization, reminders, and content administration. Do not stop at static
+     screens or a frontend backed only by fake results.
+
+     Before implementation, write a short architecture plan and record assumptions. Use the proposed stack unless
+     the existing project justifies a change; explain material changes. Pin compatible dependencies, use migrations
+     and a documented OpenAPI contract, and supply environment examples without secrets. Keep the mobile, web,
+     API, worker, and AI components independently runnable.
+
+     Implement an inference adapter with explicit real and development-fixture modes. Never invent model weights,
+     dataset access, diagnostic accuracy, confidence percentages, weather readings, advisor availability, or API
+     responses. If an external credential or licensed model is missing, complete all unblocked implementation and
+     show an honest unavailable state. List the exact missing dependency. Do not call the AI-integrated MVP
+     complete until the real inference path has been exercised and documented.
+
+     Use approved, versioned knowledge-base content for advice. Clearly label sample content as development-only.
+     Production publication requires a reviewer. Include uncertain and unsupported outcomes, human review, offline
+     capture, idempotent uploads and processing, permission checks, and clear error states from the beginning. Do
+     not automatically enable mahangu diagnosis without suitable evidence.
+
+     Create meaningful tests for authorization, case-state transitions, duplicate synchronization, AI contract validation,
+     abstention, and advice publication. Run end-to-end checks for the farmer-to-advisor journey. Provide a clearly
+     labelled sample dataset for interface testing, developer setup instructions, Android build instructions, a test
+     summary, and an honest list of outstanding limitations. Do not implement deferred features unless separately
+     requested.
+
+ Demonstration script
+ Show a farmer opening the app, adding a tomato field, and taking a photo. Run real inference and show its saved
+ result with reviewed advice. Submit an unsupported crop and demonstrate the referral path. Disable connectivity,
+ save another crop check, restart the app, reconnect, and show exactly one uploaded case. Request advisor review,
+ respond through the web portal, and show the farmer receiving the response. Finish with a follow-up observation and
+ the administrator’s traceable advice history.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                              13
+                                                                                                                             11
+ 15 Sources and remaining evidence
+ Sources below support the stated context and design considerations. They do not validate the proposed startup’s
+ commercial demand or field performance. Accessed 29 September 2026.
+
+  1. Namibian Agronomic Board. Agronomy Services. https://www.nab.com.na/agronomy/ - local grain-crop context.
+
+  2. Food and Agriculture Organization. Namibia’s farmers reap the benefits of conservation agriculture.
+     https://www.fao.org/namibia/news/detail/Namibia-s-farmers-reap-the-benefits-of-conservation-agriculture/en -
+     climate resilience and dryland farming context.
+
+  3. Food and Agriculture Organization. Integrated Pest Management.
+     https://www.fao.org/pest-and-pesticide-management/ipm/integrated-pest-management/en/ - basis for integrated
+     crop protection rather than automatic chemical advice.
+
+  4. Mohanty, S. P., Hughes, D. P. and Salathé, M. (2016). Using Deep Learning for Image-Based Plant Disease
+     Detection. Frontiers in Plant Science, 7, 1419. https://doi.org/10.3389/fpls.2016.01419 - evidence that
+     image-model performance under different image conditions requires careful validation.
+
+  5. Plantix. Plantix crop diagnosis application. https://www.plantix.net/en/ - existing competitor and product
+     category evidence; vendor claims are not independent performance verification.
+
+  6. Plantix. Crop Disease Diagnosis and Produce Grading API.
+     https://www.plantix.net/en/plantix-intelligence/api-toolkit/ - potential integration option, subject to commercial and
+     technical verification.
+
+ Before presenting this as a completed business case, add local interview findings, a sourced and dated market
+ estimate, comparative testing, real supplier quotes, buyer feedback, an agronomist-reviewed crop support list, and
+ measured prototype results. The proposal is ready to guide a build; those evidence gaps must remain visible until
+ resolved.
+
+
+
+
+AgroSense AI | Project proposal and build brief                                                                               14
+                                                                                                                              12
+

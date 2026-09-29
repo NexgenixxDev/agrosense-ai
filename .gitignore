@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+*.sqlite*
+.dart_tool/
+build/
+*.log
+local.properties
+
+.venv*/
+*.tsbuildinfo
+.DS_Store

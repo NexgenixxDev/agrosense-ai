@@ -1,0 +1,12 @@
+FROM node:24.8.0-bookworm-slim
+WORKDIR /app
+COPY package*.json ./
+COPY services/api/package.json services/api/package.json
+COPY apps/advisor-admin-web/package.json apps/advisor-admin-web/package.json
+RUN npm ci
+COPY services/api services/api
+RUN npm run build -w services/api
+WORKDIR /app/services/api
+ENV DATABASE_PATH=/data/agrosense.sqlite IMAGE_PATH=/data/images
+EXPOSE 4100
+CMD ["node", "dist/main.js"]

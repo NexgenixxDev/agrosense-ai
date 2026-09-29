@@ -1,0 +1,2217 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgroSense API",
+    "version": "0.1.0",
+    "description": "Implemented development API. Production OTP, export/deletion and storage authorization endpoints are not yet implemented."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4100"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Service health",
+        "operationId": "get_health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/crops": {
+      "get": {
+        "summary": "Catalogue and explicit live inference coverage",
+        "operationId": "get_crops",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/auth/dev": {
+      "post": {
+        "summary": "Development-only session; never phone verification",
+        "operationId": "post_auth_dev",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "enum": [
+                      "farmer-demo",
+                      "farmer-other",
+                      "advisor-demo",
+                      "admin-demo",
+                      "reviewer-demo"
+                    ]
+                  }
+                },
+                "required": [
+                  "user_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Revoke current session",
+        "operationId": "post_auth_logout",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Current account",
+        "operationId": "get_me",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/fields": {
+      "get": {
+        "summary": "List own fields",
+        "operationId": "get_fields",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Field"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create owned field",
+        "operationId": "post_fields",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Field"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases": {
+      "get": {
+        "summary": "List own cases (symptoms and analysis are serialized JSON in list rows)",
+        "operationId": "get_cases",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      },
+      "post": {
+        "summary": "Idempotent case creation; ownership and crop validated",
+        "operationId": "post_cases",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases/{id}": {
+      "get": {
+        "summary": "Authorized full case",
+        "operationId": "get_cases__id_",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/cases/{id}/images": {
+      "post": {
+        "summary": "Upload private JPEG/PNG, 8 MB limit; re-encoded and deduplicated by checksum",
+        "operationId": "post_cases__id__images",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases/{id}/images/{image}": {
+      "get": {
+        "summary": "Read authorized private photo",
+        "operationId": "get_cases__id__images__image_",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "image",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/cases/{id}/analysis": {
+      "post": {
+        "summary": "Queue exactly one analysis job per case",
+        "operationId": "post_cases__id__analysis",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/cases/{id}/retry": {
+      "post": {
+        "summary": "Retry failed analysis only",
+        "operationId": "post_cases__id__retry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/cases/{id}/review": {
+      "post": {
+        "summary": "Request advisor review",
+        "operationId": "post_cases__id__review",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/cases/{id}/follow-ups": {
+      "post": {
+        "summary": "Record idempotent outcome observation",
+        "operationId": "post_cases__id__follow_ups",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reminders": {
+      "get": {
+        "summary": "List own reminders",
+        "operationId": "get_reminders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upsert own reminder by client ID",
+        "operationId": "post_reminders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/advice": {
+      "get": {
+        "summary": "Published guidance; development content only in development mode",
+        "operationId": "get_advice",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Advice"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/advisor/cases": {
+      "get": {
+        "summary": "Assigned cases only",
+        "operationId": "get_advisor_cases",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/advisor/cases/{id}/response": {
+      "post": {
+        "summary": "Assigned advisor response and optional correction with reason",
+        "operationId": "post_advisor_cases__id__response",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponseInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/cases": {
+      "get": {
+        "summary": "Administrator case queue",
+        "operationId": "get_admin_cases",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/admin/cases/{id}/assignment": {
+      "post": {
+        "summary": "Assign an advisor",
+        "operationId": "post_admin_cases__id__assignment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "advisor_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "advisor_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "Admin account directory",
+        "operationId": "get_admin_users",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/admin/audit": {
+      "get": {
+        "summary": "Latest 200 audit events",
+        "operationId": "get_admin_audit",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      }
+    },
+    "/admin/advice": {
+      "get": {
+        "summary": "Admin/reviewer guidance versions",
+        "operationId": "get_admin_advice",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Advice"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create immutable guidance draft",
+        "operationId": "post_admin_advice",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Advice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdviceInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/advice/{id}/publish": {
+      "post": {
+        "summary": "Reviewer-only publication; retire prior matching published version",
+        "operationId": "post_admin_advice__id__publish",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Advice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required"
+          },
+          "403": {
+            "description": "Insufficient role"
+          },
+          "404": {
+            "description": "Missing or unauthorized resource"
+          },
+          "409": {
+            "description": "Invalid transition or conflicting idempotency key"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "FieldInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "region": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "production_type": {
+            "enum": [
+              "rain_fed",
+              "irrigated"
+            ]
+          },
+          "planting_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        },
+        "required": [
+          "name",
+          "crop",
+          "region",
+          "production_type"
+        ],
+        "additionalProperties": false
+      },
+      "Field": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "region": {
+            "type": "string"
+          },
+          "production_type": {
+            "enum": [
+              "rain_fed",
+              "irrigated"
+            ]
+          },
+          "planting_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "name",
+          "crop",
+          "region",
+          "production_type",
+          "planting_date",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Symptoms": {
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "duration": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "insects": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "spread": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "water": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "parts",
+          "duration",
+          "insects",
+          "spread",
+          "water"
+        ],
+        "additionalProperties": false
+      },
+      "CaseInput": {
+        "type": "object",
+        "properties": {
+          "client_submission_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "symptoms": {
+            "$ref": "#/components/schemas/Symptoms"
+          },
+          "consent_version": {
+            "const": "2026-09-29"
+          },
+          "training_consent": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "client_submission_id",
+          "crop",
+          "symptoms",
+          "consent_version"
+        ],
+        "additionalProperties": false
+      },
+      "Analysis": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "accepted",
+              "uncertain",
+              "unsupported",
+              "retake",
+              "unavailable"
+            ]
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "real",
+              "fixture",
+              "unavailable"
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "condition"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reason": {
+            "type": "string"
+          },
+          "quality_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "model_version",
+          "mode",
+          "candidates",
+          "reason",
+          "quality_flags"
+        ],
+        "additionalProperties": false
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "case_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "advisor_id": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string"
+          },
+          "correction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "case_id",
+          "advisor_id",
+          "response",
+          "correction",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "ResponseInput": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 4000
+          },
+          "correction": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "response"
+        ],
+        "additionalProperties": false
+      },
+      "FollowUpInput": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "outcome": {
+            "enum": [
+              "improved",
+              "same",
+              "worsened"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "client_id",
+          "outcome",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "ReminderInput": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "due_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "client_id",
+          "title",
+          "due_at"
+        ],
+        "additionalProperties": false
+      },
+      "AdviceInput": {
+        "type": "object",
+        "properties": {
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "condition": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 5000
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "development_only": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "crop",
+          "condition",
+          "title",
+          "body",
+          "sources"
+        ],
+        "additionalProperties": false
+      },
+      "Advice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "condition": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "state": {
+            "enum": [
+              "draft",
+              "published",
+              "retired"
+            ]
+          },
+          "development_only": {
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "reviewer_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "crop",
+          "condition",
+          "version",
+          "language",
+          "title",
+          "body",
+          "sources",
+          "state",
+          "development_only",
+          "reviewer_id",
+          "reviewed_at",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Case": {
+        "type": "object",
+        "required": [
+          "id",
+          "owner_id",
+          "crop",
+          "processing_state",
+          "review_state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "client_submission_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "crop": {
+            "type": "string",
+            "enum": [
+              "tomato",
+              "maize",
+              "mahangu",
+              "sorghum"
+            ]
+          },
+          "symptoms": {
+            "$ref": "#/components/schemas/Symptoms"
+          },
+          "processing_state": {
+            "enum": [
+              "draft",
+              "uploading",
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "review_state": {
+            "enum": [
+              "not_requested",
+              "requested",
+              "assigned",
+              "responded",
+              "closed"
+            ]
+          },
+          "advisor_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Analysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "advice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Advice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "mime": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "mime",
+                "created_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            }
+          },
+          "followups": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "farmer",
+                "advisor",
+                "admin",
+                "reviewer"
+              ]
+            }
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "roles",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "state",
+          "job_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

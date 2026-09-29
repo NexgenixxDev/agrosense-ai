@@ -1,0 +1,14 @@
+CREATE TABLE users(id TEXT PRIMARY KEY, name TEXT NOT NULL, roles TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at TEXT NOT NULL);
+CREATE TABLE fields(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL REFERENCES users(id),name TEXT NOT NULL,crop TEXT NOT NULL,region TEXT NOT NULL,production_type TEXT NOT NULL CHECK(production_type IN ('rain_fed','irrigated')),planting_date TEXT,created_at TEXT NOT NULL);
+CREATE TABLE cases(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL REFERENCES users(id),client_submission_id TEXT NOT NULL,field_id TEXT REFERENCES fields(id),crop TEXT NOT NULL,symptoms TEXT NOT NULL,consent_version TEXT NOT NULL,training_consent INTEGER NOT NULL DEFAULT 0,processing_state TEXT NOT NULL DEFAULT 'draft',review_state TEXT NOT NULL DEFAULT 'not_requested',advisor_id TEXT REFERENCES users(id),analysis TEXT,advice_id TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(owner_id,client_submission_id));
+CREATE TABLE images(id TEXT PRIMARY KEY,case_id TEXT NOT NULL REFERENCES cases(id),object_key TEXT NOT NULL,checksum TEXT NOT NULL,mime TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(case_id,checksum));
+CREATE TABLE jobs(id TEXT PRIMARY KEY,case_id TEXT NOT NULL UNIQUE REFERENCES cases(id),state TEXT NOT NULL DEFAULT 'queued',attempts INTEGER NOT NULL DEFAULT 0,available_at INTEGER NOT NULL,lease_until INTEGER,lease_token TEXT,last_error TEXT);
+CREATE TABLE advice(id TEXT PRIMARY KEY,crop TEXT NOT NULL,condition TEXT NOT NULL,version INTEGER NOT NULL,language TEXT NOT NULL DEFAULT 'en',title TEXT NOT NULL,body TEXT NOT NULL,sources TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'draft',development_only INTEGER NOT NULL DEFAULT 1,reviewer_id TEXT REFERENCES users(id),reviewed_at TEXT,created_at TEXT NOT NULL,UNIQUE(crop,condition,language,version));
+CREATE TABLE reviews(id TEXT PRIMARY KEY,case_id TEXT NOT NULL REFERENCES cases(id),advisor_id TEXT NOT NULL REFERENCES users(id),response TEXT NOT NULL,correction TEXT,created_at TEXT NOT NULL);
+CREATE TABLE followups(id TEXT PRIMARY KEY,case_id TEXT NOT NULL REFERENCES cases(id),client_id TEXT NOT NULL,outcome TEXT NOT NULL,notes TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(case_id,client_id));
+CREATE TABLE reminders(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL REFERENCES users(id),client_id TEXT NOT NULL,title TEXT NOT NULL,due_at TEXT NOT NULL,completed INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,UNIQUE(owner_id,client_id));
+CREATE TABLE audit(id TEXT PRIMARY KEY,actor_id TEXT,action TEXT NOT NULL,resource_id TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX cases_owner ON cases(owner_id,created_at);
+CREATE INDEX cases_advisor ON cases(advisor_id,review_state);
+CREATE INDEX jobs_ready ON jobs(state,available_at);
