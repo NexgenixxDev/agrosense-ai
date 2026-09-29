@@ -125,7 +125,9 @@ function App() {
           });
           if (!r.ok) throw new Error("Could not load photo");
           const url = URL.createObjectURL(await r.blob());
-          urls.push(url);
+          // Cleanup may already have run if the advisor switched cases mid-download.
+          if (cancelled) URL.revokeObjectURL(url);
+          else urls.push(url);
           return url;
         }),
       )
