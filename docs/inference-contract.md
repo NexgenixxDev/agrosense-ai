@@ -2,6 +2,8 @@
 
 The private FastAPI service accepts `POST /analyze` with `X-Service-Token`, `Idempotency-Key` and JSON `{case_id, crop, image_base64}`. The API strips metadata, checks decoded JPEG/PNG and limits dimensions before forwarding. The FastAPI port must remain private.
 
+A case may hold up to two photographs, but only the first uploaded one is sent for analysis; the second is kept for advisor review. The farmer app currently captures one. Sending both needs a contract change (for example an `images_base64` list), coordinated with the provider translator.
+
 The real adapter forwards the same payload to an operator-supplied HTTPS endpoint with `Authorization: Bearer INFERENCE_API_KEY`. This is an integration contract, **not** an assertion that Plantix or another vendor implements this protocol. Implement a vendor-specific translator after obtaining its documentation, license and credentials. The endpoint must honor Idempotency-Key to avoid repeat billing after ambiguous timeouts.
 
 Response: `{status, model_version, mode, candidates: [{condition}], reason, quality_flags: []}`. Status is accepted, uncertain, unsupported, retake or unavailable. Mode is real, fixture or unavailable. At most three candidates; never include made-up confidence percentages. Real model identity and conditions must match configuration. Accepted predictions are downgraded to uncertain until MODEL_VALIDATED=true following documented local evaluation. That switch alone is not evidence of validation.
