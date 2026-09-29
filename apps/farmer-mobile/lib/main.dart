@@ -108,7 +108,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      farm.sync();
+      farm.sync(force: true);
     }
   }
 
@@ -291,6 +291,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
         title: const Text('Set a crop reminder'),
         content: TextField(
           controller: title,
+          maxLength: 160,
           decoration: const InputDecoration(
             labelText: 'What would you like to do?',
           ),
@@ -651,7 +652,11 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${titleCase(jsonDecode(d['payload'])['crop'])} · ${d['ready'] == 1 ? 'Waiting to upload' : 'Draft'}',
+                          '${titleCase(jsonDecode(d['payload'])['crop'])} · ${d['rejected'] == 1
+                              ? 'Photo not accepted'
+                              : d['ready'] == 1
+                              ? 'Waiting to upload'
+                              : 'Draft'}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
@@ -667,7 +672,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
                           children: [
                             Expanded(
                               child: TextButton(
-                                onPressed: busy
+                                onPressed: busy || d['rejected'] == 1
                                     ? null
                                     : () => action(() async {
                                         if (d['ready'] == 1) {
@@ -695,7 +700,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
-                            if (d['server_id'] == null)
+                            if (d['server_id'] == null || d['rejected'] == 1)
                               IconButton(
                                 tooltip: 'Delete unsent draft',
                                 onPressed: busy || farm.syncing

@@ -16,6 +16,17 @@ const developmentLogin = bool.fromEnvironment('DEV_AUTH', defaultValue: false);
 const uuid = Uuid();
 typedef Json = Map<String, dynamic>;
 
+class ApiException implements Exception {
+  final int status;
+  final String message;
+  const ApiException(this.status, this.message);
+  // A rejected request that will be rejected again: retrying cannot help.
+  bool get permanent =>
+      status >= 400 && status < 500 && status != 401 && status != 429;
+  @override
+  String toString() => message;
+}
+
 class FarmData extends ChangeNotifier {
   late Database db;
   String? token;
@@ -23,6 +34,9 @@ class FarmData extends ChangeNotifier {
   String status = 'Saved work stays available on this phone.';
   final secure = const FlutterSecureStorage();
   Timer? timer;
+  DateTime? lastRefresh;
+  // Background syncs refresh server data at most this often; farmer actions refresh at once.
+  static const refreshInterval = Duration(minutes: 5);
 
   Future<void> init({
     String? databasePath,
@@ -32,10 +46,17 @@ class FarmData extends ChangeNotifier {
     final path = databasePath ?? '${await getDatabasesPath()}/agrosense.db';
     db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
+      onUpgrade: (d, from, to) async {
+        if (from < 2) {
+          await d.execute(
+            'ALTER TABLE drafts ADD COLUMN rejected INTEGER NOT NULL DEFAULT 0',
+          );
+        }
+      },
       onCreate: (d, v) async {
         await d.execute(
-          'CREATE TABLE drafts(id TEXT PRIMARY KEY, payload TEXT NOT NULL, photo TEXT NOT NULL, ready INTEGER NOT NULL DEFAULT 0, server_id TEXT, attempts INTEGER NOT NULL DEFAULT 0, retry_at INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL)',
+          'CREATE TABLE drafts(id TEXT PRIMARY KEY, payload TEXT NOT NULL, photo TEXT NOT NULL, ready INTEGER NOT NULL DEFAULT 0, server_id TEXT, attempts INTEGER NOT NULL DEFAULT 0, retry_at INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, rejected INTEGER NOT NULL DEFAULT 0)',
         );
         await d.execute(
           'CREATE TABLE cache(key TEXT PRIMARY KEY, value TEXT NOT NULL)',
@@ -73,15 +94,30 @@ class FarmData extends ChangeNotifier {
                     body: image ?? (body == null ? null : jsonEncode(body)),
                   ))
             .timeout(const Duration(seconds: 25));
-    final dynamic data = jsonDecode(response.body);
+    dynamic data;
+    try {
+      data = jsonDecode(response.body);
+    } on FormatException {
+      // e.g. a proxy's HTML error page; the status code still decides what happens.
+      data = null;
+    }
     if (response.statusCode == 401) {
       token = null;
       await secure.delete(key: 'session');
       notifyListeners();
-      throw Exception('Please sign in again. Your local drafts are safe.');
+      throw const ApiException(
+        401,
+        'Please sign in again. Your local drafts are safe.',
+      );
     }
     if (response.statusCode >= 400) {
-      throw Exception(data['message'] ?? 'Request failed');
+      throw ApiException(
+        response.statusCode,
+        (data is Map ? data['message'] : null) ?? 'Request failed',
+      );
+    }
+    if (data == null) {
+      throw ApiException(response.statusCode, 'Unexpected server response');
     }
     return data;
   }
@@ -121,9 +157,14 @@ class FarmData extends ChangeNotifier {
       final List list = await request('/cases');
       await cache('cases', list);
       for (final c in list.take(30)) {
-        await cache('case:${c['id']}', await request('/cases/${c['id']}'));
+        // Only download cases the server has changed since they were cached.
+        final Json saved = await cached('case:${c['id']}', <String, dynamic>{});
+        if (saved['updated_at'] != c['updated_at']) {
+          await cache('case:${c['id']}', await request('/cases/${c['id']}'));
+        }
       }
     }
+    lastRefresh = DateTime.now();
     notifyListeners();
   }
 
@@ -172,7 +213,7 @@ class FarmData extends ChangeNotifier {
   }
 
   Future<void> deleteDraft(Json draft) async {
-    if (syncing || draft['server_id'] != null) {
+    if (syncing || (draft['server_id'] != null && draft['rejected'] != 1)) {
       throw Exception('This draft is uploading or already submitted.');
     }
     await db.delete('drafts', where: 'id=?', whereArgs: [draft['id']]);
@@ -189,10 +230,13 @@ class FarmData extends ChangeNotifier {
     }
     syncing = true;
     notifyListeners();
+    var changed = false;
     try {
       final rows = await db.query(
         'drafts',
-        where: force ? 'ready=1' : 'ready=1 AND retry_at<=?',
+        where: force
+            ? 'ready=1 AND rejected=0'
+            : 'ready=1 AND rejected=0 AND retry_at<=?',
         whereArgs: force ? null : [DateTime.now().millisecondsSinceEpoch],
       );
       for (final d in rows) {
@@ -208,11 +252,25 @@ class FarmData extends ChangeNotifier {
             where: 'id=?',
             whereArgs: [d['id']],
           );
-          await request(
-            '/cases/${c['id']}/images',
-            method: 'POST',
-            image: await File(d['photo'] as String).readAsBytes(),
-          );
+          try {
+            await request(
+              '/cases/${c['id']}/images',
+              method: 'POST',
+              image: await File(d['photo'] as String).readAsBytes(),
+            );
+          } on ApiException catch (e) {
+            if (!e.permanent) rethrow;
+            // The server will never accept this photo; stop retrying and let the farmer discard it.
+            await db.update(
+              'drafts',
+              {'rejected': 1, 'error': 'Photo not accepted: ${e.message}'},
+              where: 'id=?',
+              whereArgs: [d['id']],
+            );
+            status =
+                'A photo was not accepted. You can discard it and take a new one.';
+            continue;
+          }
           await request('/cases/${c['id']}/analysis', method: 'POST');
           await cache('case:${c['id']}', await request('/cases/${c['id']}'));
           await db.delete('drafts', where: 'id=?', whereArgs: [d['id']]);
@@ -221,6 +279,7 @@ class FarmData extends ChangeNotifier {
             await photo.delete();
           }
           status = 'Your crop check is saved online.';
+          changed = true;
         } catch (e) {
           final attempts = (d['attempts'] as int) + 1;
           final seconds = (10 * (1 << attempts.clamp(0, 8))).clamp(20, 1800);
@@ -240,24 +299,34 @@ class FarmData extends ChangeNotifier {
         }
       }
       for (final r in await db.query('reminders', where: 'synced=0')) {
-        await request(
-          '/reminders',
-          method: 'POST',
-          body: {
-            'client_id': r['id'],
-            'title': r['title'],
-            'due_at': r['due_at'],
-            'completed': r['completed'] == 1,
-          },
-        );
-        await db.update(
-          'reminders',
-          {'synced': 1},
-          where: 'id=?',
-          whereArgs: [r['id']],
-        );
+        // Reminders live on the phone; one the server refuses must not block case updates.
+        try {
+          await request(
+            '/reminders',
+            method: 'POST',
+            body: {
+              'client_id': r['id'],
+              'title': r['title'],
+              'due_at': r['due_at'],
+              'completed': r['completed'] == 1,
+            },
+          );
+          await db.update(
+            'reminders',
+            {'synced': 1},
+            where: 'id=?',
+            whereArgs: [r['id']],
+          );
+        } on ApiException catch (e) {
+          if (!e.permanent) rethrow;
+        }
       }
-      await refresh();
+      if (force ||
+          changed ||
+          lastRefresh == null ||
+          DateTime.now().difference(lastRefresh!) >= refreshInterval) {
+        await refresh();
+      }
     } catch (_) {
       status =
           'Offline or service unavailable. Your saved work is still on this phone.';
