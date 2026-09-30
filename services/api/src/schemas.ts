@@ -1,5 +1,7 @@
 import { z } from "zod";
 export const crop = z.enum(["tomato", "maize", "mahangu", "sorghum"]);
+// A crop check may leave the crop to the AI, which then names the plant in its result.
+export const caseCrop = z.union([crop, z.literal("unknown")]);
 export const fieldInput = z
   .object({
     name: z.string().trim().min(1).max(100),
@@ -17,7 +19,7 @@ export const caseInput = z
   .object({
     client_submission_id: z.string().uuid(),
     field_id: z.string().uuid().nullable().optional(),
-    crop,
+    crop: caseCrop,
     symptoms: z
       .object({
         parts: z.string().max(200),
@@ -49,6 +51,7 @@ export const analysisSchema = z
     quality_flags: z.array(z.string()).max(10),
     confidence: z.enum(["low", "medium", "high"]).nullable().optional(),
     next_steps: z.array(z.string().max(300)).max(5).optional(),
+    plant: z.string().min(1).max(100).nullable().optional(),
   })
   .strict()
   .superRefine((v, c) => {

@@ -27,11 +27,15 @@ type Row = Record<string, any>;
 const SIMPLE = true;
 const analysisOf = (c: Row): Row | null =>
   typeof c.analysis === "string" ? JSON.parse(c.analysis) : c.analysis;
+// The plant the AI identified, falling back to the crop the farmer chose.
+const plantOf = (c: Row): string =>
+  analysisOf(c)?.plant ??
+  (c.crop === "unknown" ? "Not identified" : label(c.crop));
 const statusText: Record<string, string> = {
   accepted: "Condition identified",
   uncertain: "Uncertain — check in person",
   retake: "Photo unclear — retake needed",
-  unsupported: "Not the selected crop",
+  unsupported: "No crop plant in the photo",
   unavailable: "AI analysis not configured",
 };
 const format = (v: string) =>
@@ -546,7 +550,7 @@ function App() {
                                 <Sprout size={22} />
                               </span>
                               <div>
-                                <strong>{label(c.crop)}</strong>
+                                <strong>{plantOf(c)}</strong>
                                 <small>{c.id.slice(0, 8)}</small>
                               </div>
                             </div>
@@ -795,7 +799,7 @@ function App() {
                 <span className="eyebrow">
                   CROP CASE · {selected.id.slice(0, 8)}
                 </span>
-                <h2>{label(selected.crop)} assessment</h2>
+                <h2>{plantOf(selected)} assessment</h2>
               </div>
               <button
                 className="icon"
@@ -841,8 +845,13 @@ function App() {
                 </div>
                 {SIMPLE ? (
                   <dl>
-                    <dt>Crop</dt>
-                    <dd>{label(selected.crop)}</dd>
+                    <dt>Plant</dt>
+                    <dd>
+                      {plantOf(selected)}
+                      {selected.crop === "unknown" &&
+                        selected.analysis?.plant &&
+                        " (identified by AI)"}
+                    </dd>
                     <dt>Submitted</dt>
                     <dd>{format(selected.created_at)}</dd>
                     <dt>Farmer</dt>
@@ -879,7 +888,7 @@ function App() {
                       <p>{selected.analysis.reason}</p>
                       {!!selected.analysis.next_steps?.length && (
                         <>
-                          <h4>Suggested next steps</h4>
+                          <h4>Solutions</h4>
                           <ol>
                             {selected.analysis.next_steps.map((s: string) => (
                               <li key={s}>{s}</li>

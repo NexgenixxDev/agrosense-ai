@@ -421,9 +421,8 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
     if (c['processing_state'] == 'failed') {
       return 'Analysis failed — open to retry';
     }
-    final raw = c['analysis'];
-    if (raw == null) return 'The AI is looking at your photo…';
-    final Json a = raw is String ? jsonDecode(raw) : raw;
+    final a = analysisOf(c);
+    if (a == null) return 'The AI is looking at your photo…';
     final List candidates = a['candidates'] ?? [];
     return candidates.isNotEmpty
         ? candidates.first['condition']
@@ -438,7 +437,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
         child: Icon(Icons.eco_outlined, color: green),
       ),
       title: Text(
-        '${titleCase(c['crop'])} crop check',
+        '${plantName(c)} crop check',
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
@@ -677,7 +676,7 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${titleCase(jsonDecode(d['payload'])['crop'])} · ${d['rejected'] == 1
+                          '${plantName({'crop': jsonDecode(d['payload'])['crop']})} · ${d['rejected'] == 1
                               ? 'Photo not accepted'
                               : d['ready'] == 1
                               ? 'Waiting to upload'
@@ -958,6 +957,17 @@ String friendly(dynamic s) => (s?.toString() ?? '').replaceAll('_', ' ');
 String titleCase(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+// Case rows from the list carry analysis as JSON text; case details carry it decoded.
+Json? analysisOf(Json c) {
+  final raw = c['analysis'];
+  return raw == null ? null : (raw is String ? jsonDecode(raw) : raw);
+}
+
+// The plant the AI identified, falling back to the crop the farmer chose.
+String plantName(Json c) =>
+    analysisOf(c)?['plant'] ??
+    (c['crop'] == 'unknown' ? 'Crop' : titleCase(c['crop']));
+
 class CropCheck extends StatefulWidget {
   final List<dynamic> fields;
   final Json? draft;
@@ -967,7 +977,8 @@ class CropCheck extends StatefulWidget {
 }
 
 class _CropCheckState extends State<CropCheck> {
-  String crop = 'tomato';
+  // In simple mode the farmer doesn't choose; the AI names the plant.
+  String crop = simple ? 'unknown' : 'tomato';
   String? fieldId, draftId, photo;
   bool consent = false, training = false, busy = false;
   String? error;
@@ -1120,17 +1131,18 @@ class _CropCheckState extends State<CropCheck> {
           style: TextStyle(height: 1.5, color: Color(0xFF687961)),
         ),
         const SizedBox(height: 24),
-        DropdownButtonFormField<String>(
-          initialValue: crop,
-          decoration: const InputDecoration(labelText: 'Crop'),
-          items: cropItems(),
-          onChanged: photo != null
-              ? null
-              : (v) => setState(() {
-                  crop = v!;
-                  fieldId = null;
-                }),
-        ),
+        if (!simple)
+          DropdownButtonFormField<String>(
+            initialValue: crop,
+            decoration: const InputDecoration(labelText: 'Crop'),
+            items: cropItems(),
+            onChanged: photo != null
+                ? null
+                : (v) => setState(() {
+                    crop = v!;
+                    fieldId = null;
+                  }),
+          ),
         if (!simple) ...[
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
@@ -1474,7 +1486,7 @@ class _CasePageState extends State<CasePage> {
               padding: const EdgeInsets.all(22),
               children: [
                 Text(
-                  '${titleCase(data!['crop'])} · ${widget.id.substring(0, 8)}',
+                  '${plantName(data!)} · ${widget.id.substring(0, 8)}',
                   style: const TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
@@ -1679,13 +1691,21 @@ class _CasePageState extends State<CasePage> {
     'accepted': 'Condition identified',
     'uncertain': 'Not sure — check the plant in person',
     'retake': 'Photo unclear — please take another',
-    'unsupported': 'This doesn’t look like the selected crop',
+    'unsupported': 'No crop plant found in this photo',
     'unavailable': 'AI analysis is not set up',
   };
 
   Widget aiResult(Json a) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
+      if (a['plant'] != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Plant: ${a['plant']}',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
       Text(
         statusText[a['status']] ?? friendly(a['status']),
         style: const TextStyle(fontSize: 13, color: Color(0xFF687961)),
@@ -1707,10 +1727,7 @@ class _CasePageState extends State<CasePage> {
       Text(a['reason'], style: const TextStyle(height: 1.5)),
       if ((a['next_steps'] as List? ?? []).isNotEmpty) ...[
         const SizedBox(height: 16),
-        const Text(
-          'What you can do next',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        const Text('Solutions', style: TextStyle(fontWeight: FontWeight.bold)),
         for (final (i, s) in (a['next_steps'] as List).indexed)
           Padding(
             padding: const EdgeInsets.only(top: 6),

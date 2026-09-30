@@ -31,7 +31,7 @@ log = logging.getLogger('uvicorn.error')
 class Scan(BaseModel):
     model_config = ConfigDict(extra='forbid')
     case_id: str = Field(min_length=1, max_length=100)
-    crop: Literal['tomato', 'maize', 'mahangu', 'sorghum']
+    crop: Literal['tomato', 'maize', 'mahangu', 'sorghum', 'unknown']
     image_base64: str = Field(max_length=12_000_000)
 
 
@@ -51,6 +51,7 @@ class Result(BaseModel):
     # Claude and Gemini modes only: a readable assessment for the farmer and the printed report.
     confidence: Literal['low', 'medium', 'high'] | None = None
     next_steps: list[str] = Field(default_factory=list, max_length=5)
+    plant: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode='after')
     def accepted_needs_candidate(self):
@@ -76,32 +77,40 @@ def authenticate(x_service_token: str = Header(default='')):
 
 CROP_NAMES = {'tomato': 'tomato', 'maize': 'maize', 'mahangu': 'mahangu (pearl millet)', 'sorghum': 'sorghum'}
 
-ASSESSMENT_INSTRUCTIONS = """You look at one photograph of a crop taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
 
+def request_text(crop):
+    if crop == 'unknown':
+        return 'The farmer did not say which plant this is. Identify it and assess the photo.'
+    return f'The farmer says this is {CROP_NAMES[crop]}. Assess the photo.'
+
+ASSESSMENT_INSTRUCTIONS = """You look at one photograph taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
+
+- First identify the plant in plain words (for example "Tomato", "Maize", "Mahangu (pearl millet)", "Sorghum", "Spinach"). If the farmer named a crop and the photo clearly shows a different plant, trust the photo and say so in the summary.
 - Say what you can actually see. If the photo is too blurry, dark, far away or cropped to judge, ask for a retake instead of guessing.
-- If the photo does not show the crop the farmer selected, or shows no plant, say so.
+- If the photo shows no crop plant at all, choose "not_a_crop" and leave the plant empty.
 - Name the most likely condition in plain words (for example "Healthy", "Early blight", "Nitrogen deficiency", "Fall armyworm damage"). If several are plausible, choose "uncertain" and name the most likely one.
 - Confidence reflects how clearly the photo shows it, not how common the condition is.
 - The summary is two or three plain sentences a farmer can follow: what you see and why it matters.
-- Next steps are up to four short, safe actions: inspection, removing affected leaves, watering or spacing, and when to contact a local extension officer. Do not give pesticide names or doses; say to ask an extension officer for chemical treatment."""
+- Solutions are up to five practical steps, most important first: what to remove or change (watering, spacing, weeding, crop rotation, field hygiene), organic or low-cost options, and, when a product is really needed, the type of product (for example "a copper-based fungicide" or "an insecticide registered for fall armyworm"). Never give doses, mixing rates or spray schedules: tell the farmer to follow the product label and to ask a local extension officer or agro-dealer which products are approved in Namibia. For a healthy plant, give simple care tips."""
 
 ASSESSMENT_SCHEMA = {
     'type': 'object',
     'properties': {
-        'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'not_this_crop']},
+        'plant': {'type': 'string'},
+        'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'not_a_crop']},
         'condition': {'type': 'string'},
         'confidence': {'type': 'string', 'enum': ['low', 'medium', 'high']},
         'summary': {'type': 'string'},
-        'next_steps': {'type': 'array', 'items': {'type': 'string'}},
+        'solutions': {'type': 'array', 'items': {'type': 'string'}},
     },
-    'required': ['assessment', 'condition', 'confidence', 'summary', 'next_steps'],
+    'required': ['plant', 'assessment', 'condition', 'confidence', 'summary', 'solutions'],
     'additionalProperties': False,
 }
 
 # The environment variable holding each AI mode's key.
 AI_KEYS = {'claude': 'ANTHROPIC_API_KEY', 'gemini': 'GEMINI_API_KEY'}
 
-STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'not_this_crop': 'unsupported'}
+STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'not_a_crop': 'unsupported'}
 
 
 def claude_client():
@@ -124,7 +133,7 @@ async def claude_assessment(scan, image_format):
                 'role': 'user',
                 'content': [
                     {'type': 'image', 'source': {'type': 'base64', 'media_type': f'image/{image_format.lower()}', 'data': scan.image_base64}},
-                    {'type': 'text', 'text': f'The farmer says this is {CROP_NAMES[scan.crop]}. Assess the photo.'},
+                    {'type': 'text', 'text': request_text(scan.crop)},
                 ],
             }],
         )
@@ -157,7 +166,7 @@ async def gemini_assessment(scan, raw, image_format):
             model=model,
             contents=[
                 genai_types.Part.from_bytes(data=raw, mime_type=f'image/{image_format.lower()}'),
-                f'The farmer says this is {CROP_NAMES[scan.crop]}. Assess the photo.',
+                request_text(scan.crop),
             ],
             config=genai_types.GenerateContentConfig(
                 system_instruction=ASSESSMENT_INSTRUCTIONS,
@@ -195,7 +204,9 @@ def assessment_result(data, model, source):
         reason=(data['summary'].strip() or 'No summary was given.')[:1000],
         quality_flags=['ai_suggestion'],
         confidence=data['confidence'],
-        next_steps=[s.strip()[:300] for s in data['next_steps'] if s.strip()][:5],
+        next_steps=[s.strip()[:300] for s in data['solutions'] if s.strip()][:5],
+        # A photo with no crop plant has no plant to name, whatever the model wrote there.
+        plant=(data['plant'].strip()[:100] or None) if status != 'unsupported' else None,
     )
 
 

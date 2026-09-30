@@ -265,6 +265,7 @@ test("Claude and Gemini results carry confidence and next steps through the cont
     quality_flags: ["ai_suggestion"],
     confidence: "medium",
     next_steps: ["Remove affected leaves"],
+    plant: "Tomato",
   };
   assert.deepEqual(analysisSchema.parse(claude), claude);
   const gemini = {
@@ -279,4 +280,21 @@ test("Claude and Gemini results carry confidence and next steps through the cont
   assert.throws(() =>
     analysisSchema.parse({ ...claude, next_steps: Array(6).fill("step") }),
   );
+});
+test("a crop check can leave the crop for the AI to identify", () => {
+  const { s, db } = setup();
+  const c = s.createCase(farmer, { ...submission(), crop: "unknown" });
+  assert.equal(c.crop, "unknown");
+  assert.throws(() =>
+    s.createCase(farmer, { ...submission(), crop: "cabbage" }),
+  );
+  assert.throws(() =>
+    s.createField(farmer, {
+      name: "North",
+      crop: "unknown",
+      region: "Oshana",
+      production_type: "rain_fed",
+    }),
+  );
+  db.db.close();
 });

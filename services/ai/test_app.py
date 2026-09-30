@@ -92,7 +92,7 @@ def fake_claude(monkeypatch, answer=None, stop_reason='end_turn', error=None):
     return calls
 
 def test_claude_identifies_condition_with_readable_result(monkeypatch):
-    calls = fake_claude(monkeypatch, {'assessment':'identified','condition':'Early blight','confidence':'medium','summary':'Brown rings on lower leaves.','next_steps':['Remove affected leaves','Water at the base']})
+    calls = fake_claude(monkeypatch, {'plant':'Tomato','assessment':'identified','condition':'Early blight','confidence':'medium','summary':'Brown rings on lower leaves.','solutions':['Remove affected leaves','Water at the base']})
     r = send(monkeypatch, 'claude', crop='mahangu').json()
     assert r['status'] == 'accepted' and r['mode'] == 'claude'
     assert r['candidates'] == [{'condition':'Early blight'}]
@@ -103,15 +103,16 @@ def test_claude_identifies_condition_with_readable_result(monkeypatch):
     assert sent['output_config']['format']['type'] == 'json_schema'
     assert sent['messages'][0]['content'][0]['source']['media_type'] == 'image/png'
     assert 'mahangu (pearl millet)' in sent['messages'][0]['content'][1]['text']
+    assert r['plant'] == 'Tomato'
 
 def test_claude_retake_and_wrong_crop_have_no_candidates(monkeypatch):
-    fake_claude(monkeypatch, {'assessment':'retake','condition':'','confidence':'low','summary':'Too blurry.','next_steps':[]})
+    fake_claude(monkeypatch, {'plant':'Tomato','assessment':'retake','condition':'','confidence':'low','summary':'Too blurry.','solutions':[]})
     r = send(monkeypatch, 'claude').json(); assert r['status'] == 'retake' and r['candidates'] == []
-    fake_claude(monkeypatch, {'assessment':'not_this_crop','condition':'Maize','confidence':'high','summary':'This is maize.','next_steps':[]})
+    fake_claude(monkeypatch, {'plant':'Tomato','assessment':'not_a_crop','condition':'Maize','confidence':'high','summary':'This is maize.','solutions':[]})
     r = send(monkeypatch, 'claude').json(); assert r['status'] == 'unsupported' and r['candidates'] == []
 
 def test_claude_identified_without_condition_becomes_uncertain(monkeypatch):
-    fake_claude(monkeypatch, {'assessment':'identified','condition':' ','confidence':'low','summary':'Something is wrong.','next_steps':[]})
+    fake_claude(monkeypatch, {'plant':'Tomato','assessment':'identified','condition':' ','confidence':'low','summary':'Something is wrong.','solutions':[]})
     assert send(monkeypatch, 'claude').json()['status'] == 'uncertain'
 
 def test_claude_refusal_is_uncertain_not_an_error(monkeypatch):
@@ -153,7 +154,7 @@ def fake_gemini(monkeypatch, answer=None, finish='STOP', error=None, candidates=
     return calls
 
 def test_gemini_identifies_condition_with_readable_result(monkeypatch):
-    calls = fake_gemini(monkeypatch, {'assessment':'identified','condition':'Leaf rust','confidence':'high','summary':'Orange pustules on the leaves.','next_steps':['Remove badly affected leaves']})
+    calls = fake_gemini(monkeypatch, {'plant':'Tomato','assessment':'identified','condition':'Leaf rust','confidence':'high','summary':'Orange pustules on the leaves.','solutions':['Remove badly affected leaves']})
     r = send(monkeypatch, 'gemini', crop='maize').json()
     assert r['status'] == 'accepted' and r['mode'] == 'gemini' and r['model_version'] == 'gemini-2.5-flash'
     assert r['candidates'] == [{'condition':'Leaf rust'}] and r['confidence'] == 'high'
@@ -163,7 +164,7 @@ def test_gemini_identifies_condition_with_readable_result(monkeypatch):
     assert sent['contents'][0].inline_data.mime_type == 'image/png'
     assert 'maize' in sent['contents'][1]
     assert sent['config'].response_mime_type == 'application/json'
-    assert sent['config'].response_json_schema['required'] == ['assessment','condition','confidence','summary','next_steps']
+    assert sent['config'].response_json_schema['required'] == ['plant','assessment','condition','confidence','summary','solutions']
 
 def test_gemini_safety_block_is_uncertain_not_an_error(monkeypatch):
     fake_gemini(monkeypatch, finish='SAFETY')
@@ -175,10 +176,21 @@ def test_gemini_errors_and_truncation_are_retryable_502(monkeypatch):
     from google.genai import errors
     fake_gemini(monkeypatch, error=errors.ClientError(429, {'error': {'message': 'quota'}}))
     assert send(monkeypatch, 'gemini').status_code == 502
-    fake_gemini(monkeypatch, {'assessment':'identified'}, finish='MAX_TOKENS')
+    fake_gemini(monkeypatch, {'plant':'Tomato','assessment':'identified'}, finish='MAX_TOKENS')
     assert send(monkeypatch, 'gemini').status_code == 502
 
 def test_gemini_without_key_is_unavailable(monkeypatch):
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
     monkeypatch.delenv('GOOGLE_API_KEY', raising=False)
     r = send(monkeypatch, 'gemini').json(); assert r['status'] == 'unavailable' and 'GEMINI_API_KEY' in r['reason']
+
+def test_unknown_crop_lets_the_ai_name_the_plant(monkeypatch):
+    calls = fake_gemini(monkeypatch, {'plant':'Maize','assessment':'identified','condition':'Fall armyworm damage','confidence':'medium','summary':'Ragged holes in the leaves.','solutions':['Check the funnel for larvae','Ask an agro-dealer for an insecticide registered for fall armyworm and follow the label']})
+    r = send(monkeypatch, 'gemini', crop='unknown').json()
+    assert r['plant'] == 'Maize' and r['candidates'] == [{'condition':'Fall armyworm damage'}]
+    assert len(r['next_steps']) == 2
+    assert 'did not say which plant' in calls[0]['contents'][1]
+    calls = fake_claude(monkeypatch, {'plant':'No plant visible','assessment':'not_a_crop','condition':'','confidence':'high','summary':'This is a dog.','solutions':[]})
+    r = send(monkeypatch, 'claude', crop='unknown').json()
+    assert r['status'] == 'unsupported' and r['plant'] is None
+    assert 'did not say which plant' in calls[0]['messages'][0]['content'][1]['text']
