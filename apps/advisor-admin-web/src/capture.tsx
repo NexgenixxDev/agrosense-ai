@@ -5,7 +5,6 @@ import {
   Camera,
   Image as ImageIcon,
   RefreshCw,
-  Sprout,
 } from "lucide-react";
 import { statusText } from "./shared";
 
@@ -222,9 +221,7 @@ export function Capture() {
   return (
     <div className="capture">
       <header>
-        <span className="brand-icon">
-          <Sprout />
-        </span>
+        <img className="brand-logo" src="/logo.svg" alt="" />
         AgroSense<span className="ai">AI</span>
         {token && (
           <button className="text-button signout" onClick={signOut}>

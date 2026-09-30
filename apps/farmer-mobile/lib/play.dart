@@ -331,9 +331,16 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
       ? const AuthScreen()
       : Scaffold(
           appBar: AppBar(
-            title: const Text(
-              '🌱 AgroSense',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset('assets/logo.png', width: 34, height: 34),
+                const SizedBox(width: 10),
+                const Text(
+                  'AgroSense',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24),
+                ),
+              ],
             ),
             actions: [
               IconButton(
@@ -1018,7 +1025,9 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Center(child: Text('🌱', style: TextStyle(fontSize: 72))),
+              Center(
+                child: Image.asset('assets/logo.png', width: 104, height: 104),
+              ),
               const SizedBox(height: 10),
               Text(
                 creating ? 'Join AgroSense' : 'Welcome back!',

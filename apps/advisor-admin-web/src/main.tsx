@@ -191,9 +191,7 @@ function App() {
       <div className={"login" + (SIMPLE ? " playful" : "")}>
         <div className="login-art">
           <div className="brand light">
-            <span className="brand-icon">
-              <Sprout />
-            </span>
+            <img className="brand-logo" src="/logo.svg" alt="" />
             AgroSense<span className="ai">AI</span>
           </div>
           <div>
@@ -335,9 +333,7 @@ function App() {
     <div className={"shell" + (SIMPLE ? " playful" : "")}>
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-icon">
-            <Sprout />
-          </span>
+          <img className="brand-logo" src="/logo.svg" alt="" />
           AgroSense<span className="ai">AI</span>
         </div>
         <div className="workspace-label">
@@ -916,7 +912,10 @@ function App() {
               )}
               <div className="report">
                 <div className="print-only report-title">
-                  <strong>AgroSense AI · Crop report</strong>
+                  <strong>
+                    <img className="brand-logo" src="/logo.svg" alt="" />
+                    AgroSense · Plant report
+                  </strong>
                   <span>Printed {format(new Date().toISOString())}</span>
                 </div>
                 {!SIMPLE && (

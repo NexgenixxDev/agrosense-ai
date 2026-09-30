@@ -1585,3 +1585,18 @@ td {
   margin-left: auto;
   font-size: 14px;
 }
+/* The AgroSense "Leaf scan" logo (public/logo.svg) */
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+.report-title strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.report-title .brand-logo {
+  width: 30px;
+  height: 30px;
+}
