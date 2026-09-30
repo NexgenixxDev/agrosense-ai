@@ -1339,3 +1339,215 @@ td {
   font-size: 12px;
   color: #7a8575;
 }
+/* ── Playful theme (SIMPLE mode): cream, leaf green and pastels, Nunito, big radii ── */
+.playful {
+  --cream: #fff8ee;
+  --leaf: #2fa36b;
+  --leaf-dark: #1e7a4f;
+  --bark: #2f3a2f;
+  --mint: #d5f5e3;
+  --peach: #ffe0cc;
+  --sunshine: #fff0b3;
+  --sky: #d9ecff;
+  --lavender: #e9e1ff;
+  font-family: "Nunito", Arial, sans-serif;
+  font-size: 15px;
+  color: var(--bark);
+  background: var(--cream);
+}
+.playful button,
+.playful input,
+.playful select {
+  font-family: inherit;
+}
+.playful .sidebar {
+  background: #fffdf8;
+  border-right: 0;
+  box-shadow: 4px 0 24px #2f3a2f0d;
+}
+.playful .brand {
+  font-weight: 800;
+  font-size: 22px;
+}
+.playful .brand-icon {
+  background: var(--leaf);
+  border-radius: 16px;
+}
+.playful .workspace-label,
+.playful .field-note,
+.playful .panel-footer,
+.playful .environment,
+.playful .eyebrow {
+  display: none;
+}
+.playful nav button {
+  border-radius: 99px;
+  font-weight: 700;
+}
+.playful nav button.active {
+  background: var(--mint);
+  color: var(--leaf-dark);
+}
+.playful .topbar {
+  background: transparent;
+  border-bottom: 0;
+}
+.playful .main,
+.playful .content {
+  background: var(--cream);
+}
+.playful .page-heading h1 {
+  font-size: 34px;
+  font-weight: 800;
+}
+.playful .primary {
+  background: var(--leaf);
+  border-radius: 99px;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 14px 24px;
+}
+.playful .primary:hover {
+  background: var(--leaf-dark);
+}
+.playful .secondary {
+  border-radius: 99px;
+  border: 2px solid var(--leaf);
+  color: var(--leaf-dark);
+  font-weight: 700;
+}
+.playful .panel {
+  border: 0;
+  border-radius: 28px;
+  box-shadow: 0 8px 30px #2f3a2f0f;
+}
+.playful .panel-heading h2 {
+  font-weight: 800;
+  font-size: 20px;
+}
+.playful .count {
+  background: var(--mint);
+  color: var(--leaf-dark);
+  border-radius: 99px;
+  font-weight: 800;
+}
+.playful .search {
+  border-radius: 99px;
+}
+.playful th {
+  background: transparent;
+  font-weight: 700;
+}
+.playful .crop-cell strong {
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+.playful .text-button {
+  color: var(--leaf-dark);
+  font-weight: 800;
+}
+.emoji-bubble {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 24px;
+}
+.playful .badge {
+  border-radius: 99px;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 5px 11px;
+}
+.tone-mint {
+  background: var(--mint, #d5f5e3);
+}
+.tone-peach {
+  background: var(--peach, #ffe0cc);
+}
+.tone-sunshine {
+  background: var(--sunshine, #fff0b3);
+}
+.tone-sky {
+  background: var(--sky, #d9ecff);
+}
+.tone-lavender {
+  background: var(--lavender, #e9e1ff);
+}
+.playful .drawer {
+  background: var(--cream);
+  border-radius: 32px 0 0 32px;
+}
+.playful .drawer-header {
+  border-bottom: 0;
+}
+.playful .drawer-header h2 {
+  font-weight: 800;
+  font-size: 24px;
+  text-transform: capitalize;
+}
+.playful .photos img {
+  border-radius: 24px;
+}
+.playful .result-box {
+  border-radius: 28px;
+  padding: 22px;
+}
+.playful .result-box h3 {
+  font-size: 22px;
+  font-weight: 800;
+}
+.playful .result-box strong {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 8px 0 2px;
+  text-transform: capitalize;
+}
+.playful .result-box .badge {
+  background: #ffffffb3;
+}
+.playful .result-box h4 {
+  font-size: 16px;
+  font-weight: 800;
+}
+.playful .result-box ol {
+  font-size: 14.5px;
+}
+.playful .result-box li {
+  margin-bottom: 6px;
+}
+.playful .notice {
+  border-radius: 20px;
+}
+/* Login */
+.login.playful .login-art {
+  background: linear-gradient(135deg, #2fa36b, #7cc98f 60%, #f6d77a);
+}
+.login.playful .login-form {
+  background: var(--cream);
+}
+.login.playful .login-form h2 {
+  font-weight: 800;
+  font-size: 30px;
+}
+.login.playful .dev-label {
+  border-radius: 99px;
+}
+@media print {
+  /* White paper saves ink; the result card keeps its colour. */
+  .playful,
+  .playful .drawer,
+  .playful .overlay {
+    background: #fff;
+  }
+  .playful .drawer {
+    border-radius: 0;
+  }
+  .playful .result-box {
+    border: 2px solid #e2dccf;
+  }
+}

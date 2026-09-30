@@ -21,7 +21,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import "./style.css";
-import { statusText } from "./shared";
+import { lookFor, plantEmoji, statusText } from "./shared";
 import { Capture } from "./capture";
 type Row = Record<string, any>;
 // School-project mode: photo → AI result → printed report, one admin login.
@@ -32,7 +32,11 @@ const analysisOf = (c: Row): Row | null =>
 // The plant the AI identified, falling back to the crop the farmer chose.
 const plantOf = (c: Row): string =>
   analysisOf(c)?.plant ??
-  (c.crop === "unknown" ? "Not identified" : label(c.crop));
+  (c.crop !== "unknown"
+    ? label(c.crop)
+    : SIMPLE
+      ? lookFor(analysisOf(c), c.processing_state).headline
+      : "Not identified");
 const format = (v: string) =>
   new Intl.DateTimeFormat("en-NA", {
     dateStyle: "medium",
@@ -182,7 +186,7 @@ function App() {
   }
   if (!token || !user)
     return (
-      <div className="login">
+      <div className={"login" + (SIMPLE ? " playful" : "")}>
         <div className="login-art">
           <div className="brand light">
             <span className="brand-icon">
@@ -261,7 +265,7 @@ function App() {
       </div>
     );
   return (
-    <div className="shell">
+    <div className={"shell" + (SIMPLE ? " playful" : "")}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-icon">
@@ -354,14 +358,14 @@ function App() {
               </span>
               <h1>
                 {SIMPLE
-                  ? "Crop results"
+                  ? "🌱 Plant checks"
                   : page === "Overview"
                     ? `Good to see you, ${user.name.split(" ")[0]}.`
                     : page}
               </h1>
               <p>
                 {SIMPLE
-                  ? "Photos from the farmer app, analysed by AI. Open one to print its report."
+                  ? "Open a check to see the result and print it."
                   : page === "Overview"
                     ? "A little attention today. A healthier harvest tomorrow."
                     : page === "Case queue"
@@ -485,7 +489,7 @@ function App() {
                 <div>
                   <h2>
                     {SIMPLE
-                      ? "All crop checks"
+                      ? "Latest checks"
                       : page === "Overview"
                         ? "Your crop cases"
                         : "Case queue"}
@@ -498,7 +502,9 @@ function App() {
                         : "Only cases assigned to you appear here."}
                   </p>
                 </div>
-                <span className="count">{cases.length} cases</span>
+                <span className="count">
+                  {cases.length} {SIMPLE ? "checks" : "cases"}
+                </span>
               </div>
               <div className="toolbar">
                 <div className="search">
@@ -528,10 +534,10 @@ function App() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Crop / case</th>
-                        <th>Farmer</th>
+                        <th>{SIMPLE ? "Plant" : "Crop / case"}</th>
+                        {!SIMPLE && <th>Farmer</th>}
                         <th>Submitted</th>
-                        <th>Processing</th>
+                        {!SIMPLE && <th>Processing</th>}
                         <th>{SIMPLE ? "AI result" : "Review"}</th>
                         <th />
                       </tr>
@@ -541,29 +547,52 @@ function App() {
                         <tr key={c.id}>
                           <td>
                             <div className="crop-cell">
-                              <span className={"crop-icon " + c.crop}>
-                                <Sprout size={22} />
-                              </span>
+                              {SIMPLE ? (
+                                <span
+                                  className={
+                                    "emoji-bubble tone-" +
+                                    lookFor(analysisOf(c), c.processing_state)
+                                      .tone
+                                  }
+                                >
+                                  {plantEmoji(analysisOf(c)?.plant ?? c.crop)}
+                                </span>
+                              ) : (
+                                <span className={"crop-icon " + c.crop}>
+                                  <Sprout size={22} />
+                                </span>
+                              )}
                               <div>
                                 <strong>{plantOf(c)}</strong>
                                 <small>{c.id.slice(0, 8)}</small>
                               </div>
                             </div>
                           </td>
-                          <td>{c.owner_id}</td>
+                          {!SIMPLE && <td>{c.owner_id}</td>}
                           <td>{format(c.created_at)}</td>
-                          <td>
-                            <span className={"badge " + c.processing_state}>
-                              {label(c.processing_state)}
-                            </span>
-                          </td>
+                          {!SIMPLE && (
+                            <td>
+                              <span className={"badge " + c.processing_state}>
+                                {label(c.processing_state)}
+                              </span>
+                            </td>
+                          )}
                           <td>
                             {SIMPLE ? (
-                              <span className="badge">
+                              <span
+                                className={
+                                  "badge tone-" +
+                                  lookFor(analysisOf(c), c.processing_state)
+                                    .tone
+                                }
+                              >
+                                {
+                                  lookFor(analysisOf(c), c.processing_state)
+                                    .emoji
+                                }{" "}
                                 {analysisOf(c)?.candidates?.[0]?.condition ??
-                                  (analysisOf(c)
-                                    ? statusText[analysisOf(c)!.status]
-                                    : "Waiting for analysis")}
+                                  lookFor(analysisOf(c), c.processing_state)
+                                    .headline}
                               </span>
                             ) : (
                               <span className={"badge " + c.review_state}>
@@ -794,7 +823,11 @@ function App() {
                 <span className="eyebrow">
                   CROP CASE · {selected.id.slice(0, 8)}
                 </span>
-                <h2>{plantOf(selected)} assessment</h2>
+                <h2>
+                  {SIMPLE
+                    ? `${plantEmoji(selected.analysis?.plant ?? selected.crop)} ${plantOf(selected)}`
+                    : `${plantOf(selected)} assessment`}
+                </h2>
               </div>
               <button
                 className="icon"
@@ -819,16 +852,16 @@ function App() {
                   <strong>AgroSense AI · Crop report</strong>
                   <span>Printed {format(new Date().toISOString())}</span>
                 </div>
-                <div className="tags">
-                  <span className="badge">
-                    {label(selected.processing_state)}
-                  </span>
-                  {!SIMPLE && (
+                {!SIMPLE && (
+                  <div className="tags">
+                    <span className="badge">
+                      {label(selected.processing_state)}
+                    </span>
                     <span className="badge">
                       {label(selected.review_state)}
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <div className="photos">
                   {photos.map((p) => (
                     <img
@@ -867,23 +900,44 @@ function App() {
                     </dl>
                   </>
                 )}
-                <div className="result-box">
-                  <h3>AI result</h3>
+                <div
+                  className={
+                    "result-box" +
+                    (SIMPLE
+                      ? " tone-" +
+                        lookFor(selected.analysis, selected.processing_state)
+                          .tone
+                      : "")
+                  }
+                >
+                  <h3>
+                    {SIMPLE
+                      ? `${lookFor(selected.analysis, selected.processing_state).emoji} ${lookFor(selected.analysis, selected.processing_state).headline}`
+                      : "AI result"}
+                  </h3>
                   {selected.analysis ? (
                     <>
-                      <span className="badge">
-                        {statusText[selected.analysis.status] ??
-                          selected.analysis.status}
-                        {selected.analysis.confidence &&
-                          ` · ${selected.analysis.confidence} confidence`}
-                      </span>
+                      {SIMPLE ? (
+                        selected.analysis.confidence && (
+                          <span className="badge">
+                            {selected.analysis.confidence} confidence
+                          </span>
+                        )
+                      ) : (
+                        <span className="badge">
+                          {statusText[selected.analysis.status] ??
+                            selected.analysis.status}
+                          {selected.analysis.confidence &&
+                            ` · ${selected.analysis.confidence} confidence`}
+                        </span>
+                      )}
                       {selected.analysis.candidates.map((c: Row) => (
                         <strong key={c.condition}>{label(c.condition)}</strong>
                       ))}
                       <p>{selected.analysis.reason}</p>
                       {!!selected.analysis.next_steps?.length && (
                         <>
-                          <h4>Solutions</h4>
+                          <h4>{SIMPLE ? "How to fix it 💪" : "Solutions"}</h4>
                           <ol>
                             {selected.analysis.next_steps.map((s: string) => (
                               <li key={s}>{s}</li>
