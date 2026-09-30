@@ -1257,3 +1257,85 @@ td {
     break-inside: avoid;
   }
 }
+/* Phone capture page (/capture): one column, large touch targets. */
+.capture {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 18px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.capture header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  padding-bottom: 6px;
+}
+.capture h1 {
+  margin: 10px 0 0;
+  font-size: 28px;
+}
+.capture .lead {
+  margin: 0;
+  color: #56664f;
+  line-height: 1.5;
+}
+.capture .big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  font-size: 17px;
+  cursor: pointer;
+}
+.capture .shot {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #eef2e8;
+}
+.capture .consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.capture .consent input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin-top: 1px;
+}
+.capture .working {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: #166534;
+}
+.capture .result-box h2 {
+  margin: 10px 0 4px;
+  font-size: 22px;
+}
+.capture .result-box p,
+.capture .result-box ol {
+  font-size: 15px;
+  line-height: 1.55;
+}
+.capture .plant {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.capture footer {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #7a8575;
+}

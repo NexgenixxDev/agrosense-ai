@@ -21,6 +21,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import "./style.css";
+import { statusText } from "./shared";
+import { Capture } from "./capture";
 type Row = Record<string, any>;
 // School-project mode: photo → AI result → printed report, one admin login.
 // Set to false to bring back the advisor, guidance and people screens.
@@ -31,13 +33,6 @@ const analysisOf = (c: Row): Row | null =>
 const plantOf = (c: Row): string =>
   analysisOf(c)?.plant ??
   (c.crop === "unknown" ? "Not identified" : label(c.crop));
-const statusText: Record<string, string> = {
-  accepted: "Condition identified",
-  uncertain: "Uncertain — check in person",
-  retake: "Photo unclear — retake needed",
-  unsupported: "No crop plant in the photo",
-  unavailable: "AI analysis not configured",
-};
 const format = (v: string) =>
   new Intl.DateTimeFormat("en-NA", {
     dateStyle: "medium",
@@ -1119,4 +1114,7 @@ function App() {
     </div>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+// /capture is the phone page: take a photo, get the AI result. Everything else is the portal.
+createRoot(document.getElementById("root")!).render(
+  location.pathname.startsWith("/capture") ? <Capture /> : <App />,
+);
