@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'data.dart';
+import 'play.dart' show PlayHome, playTheme;
 import 'reminders.dart';
 
 // School-project mode: pick the crop, take a photo, see the AI result.
@@ -41,41 +42,43 @@ class AgroSenseApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'AgroSense',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      fontFamily: 'Arial',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: green,
-        surface: const Color(0xFFF7FAF5),
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF7FAF5),
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(fontSize: 17, color: ink),
-        bodyMedium: TextStyle(fontSize: 16, color: ink),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF7FAF5),
-        foregroundColor: ink,
-        centerTitle: false,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDE5D8)),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    theme: simple
+        ? playTheme()
+        : ThemeData(
+            useMaterial3: true,
+            fontFamily: 'Arial',
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: green,
+              surface: const Color(0xFFF7FAF5),
+            ),
+            scaffoldBackgroundColor: const Color(0xFFF7FAF5),
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(fontSize: 17, color: ink),
+              bodyMedium: TextStyle(fontSize: 16, color: ink),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFFF7FAF5),
+              foregroundColor: ink,
+              centerTitle: false,
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFDDE5D8)),
+              ),
+            ),
+            filledButtonTheme: FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(48, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-    ),
-    home: const FarmerHome(),
+    home: simple ? const PlayHome() : const FarmerHome(),
   );
 }
 
