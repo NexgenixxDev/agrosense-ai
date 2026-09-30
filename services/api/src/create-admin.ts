@@ -1,7 +1,10 @@
 // Creates an admin account, or gives an existing account admin rights and a new
 // password. Admins can only be made here, never from the app or the portal.
 //   npm run create-admin -- --phone "081 234 5678" --name "Martin"
+//   add --generate-to FILE to have a random password written to FILE instead
 import "./config";
+import { randomBytes } from "node:crypto";
+import { writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { Store, id, now } from "./db";
 import { hashPassword, normalizePhone } from "./auth";
@@ -39,14 +42,35 @@ async function main() {
     );
     process.exit(1);
   }
-  const password = await secret("New admin password (min 8 characters): ");
-  if (password.length < 8) {
-    console.error("Password must be at least 8 characters.");
-    process.exit(1);
-  }
-  if ((await secret("Type it again: ")) !== password) {
-    console.error("The passwords did not match.");
-    process.exit(1);
+  // --generate-to FILE: make a random password and write it only to FILE
+  // (owner-readable), so it is never typed, shown or kept in shell history.
+  const target = arg("generate-to");
+  let password: string;
+  if (target) {
+    password = randomBytes(12).toString("base64url");
+    try {
+      writeFileSync(
+        target,
+        `AgroSense admin\nPhone: ${phone}\nPassword: ${password}\n`,
+        {
+          mode: 0o600,
+          flag: "wx",
+        },
+      );
+    } catch {
+      console.error(`Could not create ${target} (it may already exist).`);
+      process.exit(1);
+    }
+  } else {
+    password = await secret("New admin password (min 8 characters): ");
+    if (password.length < 8) {
+      console.error("Password must be at least 8 characters.");
+      process.exit(1);
+    }
+    if ((await secret("Type it again: ")) !== password) {
+      console.error("The passwords did not match.");
+      process.exit(1);
+    }
   }
   const db = new Store();
   const hash = await hashPassword(password);
