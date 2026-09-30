@@ -40,6 +40,8 @@ flutter build apk --debug --target-platform=android-arm64 --dart-define=DEV_AUTH
 
 The emulator uses `10.0.2.2` to reach this Mac. On a physical phone use a reachable development host address. Plain HTTP is allowed only in the Android debug manifest. A release build needs HTTPS, real authentication, release signing and approved content. Never enable development sign-in for a public deployment.
 
+The verified ARM64 debug APK is at `apps/farmer-mobile/build/app/outputs/flutter-apk/app-debug.apk`.
+
 ## What works
 
 - Persistent SQLite fields/cases, private validated JPEG/PNG uploads, source-metadata stripping and authorization.
@@ -59,6 +61,7 @@ cd ../../apps/farmer-mobile && flutter test
 # With all local services running, from root:
 node scripts/e2e.mjs
 node scripts/browser-check.mjs
+node scripts/content-check.mjs
 ```
 
 The end-to-end script creates labelled test records using a synthetic non-diagnostic image. The browser script uses installed Google Chrome and adds a labelled test advisor response. Screenshots are in `docs/screenshots/`. See [test status](docs/test-summary.md) for measured results and unverified criteria.
