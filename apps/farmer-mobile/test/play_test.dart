@@ -19,7 +19,10 @@ void main() {
       lookFor(result('accepted', 'Early blight'), 'completed').headline,
       'Needs some care',
     );
-    expect(lookFor(result('uncertain', 'Leaf spot'), 'completed').emoji, '🤔');
+    expect(
+      lookFor(result('uncertain', 'Leaf spot'), 'completed').icon,
+      Icons.help_rounded,
+    );
     expect(lookFor(result('retake'), 'completed').color, sky);
     expect(
       lookFor(result('unsupported'), 'completed').headline,
@@ -27,14 +30,6 @@ void main() {
     );
     expect(lookFor(null, 'queued').headline, 'Looking closely…');
     expect(lookFor(null, 'failed').headline, 'Something went wrong');
-  });
-
-  test('plants get a matching emoji, anything else a leaf', () {
-    expect(plantEmoji('Tomato'), '🍅');
-    expect(plantEmoji('Maize (corn)'), '🌽');
-    expect(plantEmoji('Mahangu (pearl millet)'), '🌾');
-    expect(plantEmoji('Baobab'), '🌿');
-    expect(plantEmoji(null), '🌿');
   });
 
   test('check times read like a person would say them', () {
@@ -56,12 +51,15 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Row(
-          children: [pill('high confidence', mint), bubble('🍅', peach)],
+          children: [
+            pill('high confidence', mint),
+            bubble(Icons.healing_rounded, peach, coral),
+          ],
         ),
       ),
     );
     expect(find.text('high confidence'), findsOneWidget);
-    expect(find.text('🍅'), findsOneWidget);
+    expect(find.byIcon(Icons.healing_rounded), findsOneWidget);
   });
 
   testWidgets('the welcome screen signs in or creates an account', (

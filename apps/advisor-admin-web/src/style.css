@@ -1600,3 +1600,53 @@ td {
   width: 30px;
   height: 30px;
 }
+/* Real photos and result icons instead of emoji */
+.ink-mint {
+  color: #1e7a4f;
+}
+.ink-peach {
+  color: #e8664f;
+}
+.ink-sunshine {
+  color: #b7791f;
+}
+.ink-sky {
+  color: #2b6cb0;
+}
+.ink-lavender {
+  color: #6b46c1;
+}
+.playful .result-box h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.playful .badge svg {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.login.playful .login-art {
+  background:
+    linear-gradient(180deg, #0f2a1a33 0%, #0f2a1acc 100%),
+    url("/photos/mahangu.jpg") center / cover;
+}
+.login.playful .landscape {
+  display: none;
+}
+.login.playful .login-art small {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.capture .banner {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 22px;
+}
+.case-thumb {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 14px;
+  object-fit: cover;
+}

@@ -28,6 +28,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/photos/
   # Nunito (SIL Open Font License, assets/fonts/OFL.txt): static weights
   # generated from the variable font with fontTools varLib.instancer.
   fonts:

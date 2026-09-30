@@ -9,39 +9,40 @@ export const statusText: Record<string, string> = {
 
 type Analysis = Record<string, any> | null | undefined;
 
-// Emoji, headline and colour tone for an AI outcome (matches the farmer app).
+// Icon, headline and colour tone for an AI outcome (matches the farmer app).
+export type LookIconName =
+  | "check"
+  | "care"
+  | "unsure"
+  | "camera"
+  | "none"
+  | "search"
+  | "error"
+  | "offline";
+
 export function lookFor(a: Analysis, processing?: string) {
+  const look = (icon: LookIconName, headline: string, tone: string) => ({
+    icon,
+    headline,
+    tone,
+  });
   if (!a)
     return processing === "failed"
-      ? { emoji: "😕", headline: "Something went wrong", tone: "sunshine" }
-      : { emoji: "🔍", headline: "Looking closely…", tone: "sky" };
+      ? look("error", "Something went wrong", "sunshine")
+      : look("search", "Looking closely…", "sky");
   const condition = String(a.candidates?.[0]?.condition ?? "").toLowerCase();
   switch (a.status) {
     case "accepted":
       return condition.includes("healthy")
-        ? { emoji: "🎉", headline: "Looks healthy!", tone: "mint" }
-        : { emoji: "🩹", headline: "Needs some care", tone: "peach" };
+        ? look("check", "Looks healthy!", "mint")
+        : look("care", "Needs some care", "peach");
     case "uncertain":
-      return { emoji: "🤔", headline: "Hmm, not sure", tone: "sunshine" };
+      return look("unsure", "Not sure yet", "sunshine");
     case "retake":
-      return { emoji: "📸", headline: "Try another photo", tone: "sky" };
+      return look("camera", "Try another photo", "sky");
     case "unsupported":
-      return { emoji: "🔍", headline: "No plant found", tone: "lavender" };
+      return look("none", "No plant found", "lavender");
     default:
-      return { emoji: "😴", headline: "The AI is resting", tone: "lavender" };
+      return look("offline", "The AI is resting", "lavender");
   }
 }
-
-const EMOJI: [string, string][] = [
-  ["tomato", "🍅"], ["maize", "🌽"], ["corn", "🌽"], ["mahangu", "🌾"],
-  ["millet", "🌾"], ["sorghum", "🌾"], ["wheat", "🌾"], ["spinach", "🥬"],
-  ["cabbage", "🥬"], ["lettuce", "🥬"], ["potato", "🥔"], ["pepper", "🌶️"],
-  ["chilli", "🌶️"], ["bean", "🫘"], ["pumpkin", "🎃"], ["squash", "🎃"],
-  ["carrot", "🥕"], ["onion", "🧅"], ["melon", "🍉"], ["rose", "🌹"],
-  ["sunflower", "🌻"], ["cactus", "🌵"],
-];
-
-// A friendly emoji for the plant the AI named; a leaf for anything else.
-export const plantEmoji = (plant?: string | null) =>
-  EMOJI.find(([word]) => (plant ?? "").toLowerCase().includes(word))?.[1] ??
-  "🌿";

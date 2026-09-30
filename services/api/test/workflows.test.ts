@@ -285,6 +285,9 @@ test("a crop check can leave the crop for the AI to identify", () => {
   const { s, db } = setup();
   const c = s.createCase(farmer, { ...submission(), crop: "unknown" });
   assert.equal(c.crop, "unknown");
+  const listed = s.listCases(farmer)[0];
+  assert.equal(listed.id, c.id);
+  assert.equal(listed.image_id, null);
   assert.throws(() =>
     s.createCase(farmer, { ...submission(), crop: "cabbage" }),
   );

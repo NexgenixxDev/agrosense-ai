@@ -21,7 +21,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import "./style.css";
-import { lookFor, plantEmoji, statusText } from "./shared";
+import { lookFor, statusText } from "./shared";
+import { CaseThumb, LookIcon } from "./look-icon";
 import { Capture } from "./capture";
 type Row = Record<string, any>;
 // School-project mode: photo → AI result → printed report, one admin login.
@@ -213,12 +214,14 @@ function App() {
             </div>
           </div>
           <small>
-            Designed for farmers and agricultural advisors in Namibia.
+            {SIMPLE
+              ? "Photo: mahangu field in northern Namibia, Shikoha Tautiko, Wikimedia Commons, CC BY-SA 4.0"
+              : "Designed for farmers and agricultural advisors in Namibia."}
           </small>
         </div>
         <main className="login-form">
           <span className="eyebrow">ADVISOR & ADMIN PORTAL</span>
-          <h2>{SIMPLE ? "Welcome back! 🌱" : "Welcome to your workspace"}</h2>
+          <h2>{SIMPLE ? "Welcome back" : "Welcome to your workspace"}</h2>
           <p>
             {SIMPLE
               ? "Sign in to see plant checks and print reports."
@@ -421,7 +424,7 @@ function App() {
               </span>
               <h1>
                 {SIMPLE
-                  ? "🌱 Plant checks"
+                  ? "Plant checks"
                   : page === "Overview"
                     ? `Good to see you, ${user.name.split(" ")[0]}.`
                     : page}
@@ -611,15 +614,19 @@ function App() {
                           <td>
                             <div className="crop-cell">
                               {SIMPLE ? (
-                                <span
-                                  className={
-                                    "emoji-bubble tone-" +
+                                <CaseThumb
+                                  caseId={c.id}
+                                  imageId={c.image_id}
+                                  token={token}
+                                  icon={
+                                    lookFor(analysisOf(c), c.processing_state)
+                                      .icon
+                                  }
+                                  tone={
                                     lookFor(analysisOf(c), c.processing_state)
                                       .tone
                                   }
-                                >
-                                  {plantEmoji(analysisOf(c)?.plant ?? c.crop)}
-                                </span>
+                                />
                               ) : (
                                 <span className={"crop-icon " + c.crop}>
                                   <Sprout size={22} />
@@ -649,10 +656,17 @@ function App() {
                                     .tone
                                 }
                               >
-                                {
-                                  lookFor(analysisOf(c), c.processing_state)
-                                    .emoji
-                                }{" "}
+                                <LookIcon
+                                  name={
+                                    lookFor(analysisOf(c), c.processing_state)
+                                      .icon
+                                  }
+                                  tone={
+                                    lookFor(analysisOf(c), c.processing_state)
+                                      .tone
+                                  }
+                                  size={14}
+                                />
                                 {analysisOf(c)?.candidates?.[0]?.condition ??
                                   lookFor(analysisOf(c), c.processing_state)
                                     .headline}
@@ -888,7 +902,7 @@ function App() {
                 </span>
                 <h2>
                   {SIMPLE
-                    ? `${plantEmoji(selected.analysis?.plant ?? selected.crop)} ${plantOf(selected)}`
+                    ? plantOf(selected)
                     : `${plantOf(selected)} assessment`}
                 </h2>
               </div>
@@ -977,9 +991,31 @@ function App() {
                   }
                 >
                   <h3>
-                    {SIMPLE
-                      ? `${lookFor(selected.analysis, selected.processing_state).emoji} ${lookFor(selected.analysis, selected.processing_state).headline}`
-                      : "AI result"}
+                    {SIMPLE ? (
+                      <>
+                        <LookIcon
+                          name={
+                            lookFor(
+                              selected.analysis,
+                              selected.processing_state,
+                            ).icon
+                          }
+                          tone={
+                            lookFor(
+                              selected.analysis,
+                              selected.processing_state,
+                            ).tone
+                          }
+                          size={26}
+                        />
+                        {
+                          lookFor(selected.analysis, selected.processing_state)
+                            .headline
+                        }
+                      </>
+                    ) : (
+                      "AI result"
+                    )}
                   </h3>
                   {selected.analysis ? (
                     <>
@@ -1003,7 +1039,7 @@ function App() {
                       <p>{selected.analysis.reason}</p>
                       {!!selected.analysis.next_steps?.length && (
                         <>
-                          <h4>{SIMPLE ? "How to fix it 💪" : "Solutions"}</h4>
+                          <h4>{SIMPLE ? "How to fix it" : "Solutions"}</h4>
                           <ol>
                             {selected.analysis.next_steps.map((s: string) => (
                               <li key={s}>{s}</li>

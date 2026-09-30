@@ -75,18 +75,28 @@ ThemeData playTheme() {
   );
 }
 
-/// How a result looks: emoji, headline and card colour for each AI outcome.
+/// How a result looks: icon, headline, card colour and a stronger ink colour.
 class Look {
-  final String emoji, headline;
-  final Color color;
-  const Look(this.emoji, this.headline, this.color);
+  final IconData icon;
+  final String headline;
+  final Color color, ink;
+  const Look(this.icon, this.headline, this.color, this.ink);
 }
+
+const _amber = Color(0xFFB7791F),
+    _blue = Color(0xFF2B6CB0),
+    _violet = Color(0xFF6B46C1);
 
 Look lookFor(Json? a, String? processing) {
   if (a == null) {
     return processing == 'failed'
-        ? const Look('😕', 'Something went wrong', sunshine)
-        : const Look('🔍', 'Looking closely…', sky);
+        ? const Look(
+            Icons.error_outline_rounded,
+            'Something went wrong',
+            sunshine,
+            _amber,
+          )
+        : const Look(Icons.search_rounded, 'Looking closely…', sky, _blue);
   }
   final condition =
       ((a['candidates'] as List?)?.firstOrNull?['condition'] ?? '')
@@ -95,47 +105,37 @@ Look lookFor(Json? a, String? processing) {
   switch (a['status']) {
     case 'accepted':
       return condition.contains('healthy')
-          ? const Look('🎉', 'Looks healthy!', mint)
-          : const Look('🩹', 'Needs some care', peach);
+          ? const Look(
+              Icons.check_circle_rounded,
+              'Looks healthy!',
+              mint,
+              leafDark,
+            )
+          : const Look(Icons.healing_rounded, 'Needs some care', peach, coral);
     case 'uncertain':
-      return const Look('🤔', 'Hmm, not sure', sunshine);
+      return const Look(Icons.help_rounded, 'Not sure yet', sunshine, _amber);
     case 'retake':
-      return const Look('📸', 'Try another photo', sky);
+      return const Look(
+        Icons.photo_camera_rounded,
+        'Try another photo',
+        sky,
+        _blue,
+      );
     case 'unsupported':
-      return const Look('🔍', 'No plant found', lavender);
+      return const Look(
+        Icons.image_search_rounded,
+        'No plant found',
+        lavender,
+        _violet,
+      );
     default:
-      return const Look('😴', 'The AI is resting', lavender);
+      return const Look(
+        Icons.cloud_off_rounded,
+        'The AI is resting',
+        lavender,
+        _violet,
+      );
   }
-}
-
-/// A friendly emoji for the plant the AI named.
-String plantEmoji(String? plant) {
-  final p = (plant ?? '').toLowerCase();
-  const byWord = {
-    'tomato': '🍅',
-    'maize': '🌽',
-    'corn': '🌽',
-    'mahangu': '🌾',
-    'millet': '🌾',
-    'sorghum': '🌾',
-    'wheat': '🌾',
-    'spinach': '🥬',
-    'cabbage': '🥬',
-    'lettuce': '🥬',
-    'potato': '🥔',
-    'pepper': '🌶️',
-    'chilli': '🌶️',
-    'bean': '🫘',
-    'pumpkin': '🎃',
-    'squash': '🎃',
-    'carrot': '🥕',
-    'onion': '🧅',
-    'melon': '🍉',
-  };
-  for (final e in byWord.entries) {
-    if (p.contains(e.key)) return e.value;
-  }
-  return '🌿';
 }
 
 /// "Today, 10:34", "Yesterday, 08:02" or "29 Sep" for a case's timestamp.
@@ -183,13 +183,14 @@ Widget pill(String text, Color color) => Container(
   ),
 );
 
-Widget bubble(String emoji, Color color, {double size = 52}) => Container(
-  width: size,
-  height: size,
-  alignment: Alignment.center,
-  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  child: Text(emoji, style: TextStyle(fontSize: size * 0.48)),
-);
+Widget bubble(IconData icon, Color color, Color ink, {double size = 52}) =>
+    Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Icon(icon, size: size * 0.5, color: ink),
+    );
 
 // ── Home ────────────────────────────────────────────────────────────────────
 
@@ -267,18 +268,18 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           SizedBox(height: 16),
-          Text('☀️  Good daylight, no flash', style: TextStyle(fontSize: 17)),
-          SizedBox(height: 10),
-          Text(
-            '🍃  Get close to the sick leaf',
-            style: TextStyle(fontSize: 17),
-          ),
-          SizedBox(height: 10),
-          Text('✋  Hold still so it’s sharp', style: TextStyle(fontSize: 17)),
+          _Tip(Icons.wb_sunny_rounded, 'Good daylight, no flash'),
+          _Tip(Icons.zoom_in_rounded, 'Get close to the sick leaf'),
+          _Tip(Icons.back_hand_rounded, 'Hold still so it’s sharp'),
           SizedBox(height: 18),
           Text(
             'The AI gives suggestions, not a final diagnosis. Ask an extension officer before using chemicals.',
             style: TextStyle(fontSize: 14, color: Color(0xFF6B756B)),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Photos: Erasmus Kamugisha and Emmanuel Ssekaggo, Wikimedia Commons, CC BY-SA 4.0.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF8A928A)),
           ),
         ],
       ),
@@ -295,7 +296,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            bubble('🧑‍🌾', mint, size: 72),
+            bubble(Icons.person_rounded, mint, leafDark, size: 72),
             const SizedBox(height: 12),
             Text(
               farm.user?['name'] ?? 'Farmer',
@@ -361,41 +362,57 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [mint, sunshine],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                  child: Column(
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: Stack(
                     children: [
-                      const Text('🌿 🍅 🌽', style: TextStyle(fontSize: 46)),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Is your plant okay?',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
+                      Positioned.fill(
+                        child: Image.asset(
+                          'assets/photos/tomato.jpg',
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Snap a photo and find out.',
-                        style: TextStyle(
-                          fontSize: 17,
-                          color: Color(0xFF55605A),
+                      // Darken the lower part so the white text stays readable.
+                      const Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0x10000000), Color(0xC0172A1C)],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: check,
-                        icon: const Text('📸', style: TextStyle(fontSize: 22)),
-                        label: const Text("Let's check!"),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 120, 22, 22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Is your plant okay?',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Take a photo and find out in seconds.',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xE6FFFFFF),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            FilledButton.icon(
+                              onPressed: check,
+                              icon: const Icon(Icons.photo_camera_rounded),
+                              label: const Text('Check a plant'),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -423,7 +440,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 28),
                     child: Text(
-                      'No checks yet. Your first one will show up here 🌱',
+                      'No checks yet. Your first one will show up here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF6B756B)),
                     ),
@@ -458,7 +475,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                bubble(plantEmoji(plant), look.color),
+                thumbnail(c, look),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -466,7 +483,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
                     children: [
                       Text(
                         // Without a plant name, the result itself is the title.
-                        plant ?? '${look.emoji} ${look.headline}',
+                        plant ?? look.headline,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -474,13 +491,22 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(
-                        plant == null
-                            ? taken(c['created_at'])
-                            : '${look.emoji} ${condition ?? look.headline}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF55605A)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(look.icon, size: 16, color: look.ink),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              plant == null
+                                  ? taken(c['created_at'])
+                                  : condition ?? look.headline,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Color(0xFF55605A)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -494,6 +520,24 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
     );
   }
 
+  // The farmer's own photo; the result icon while it loads or if it can't.
+  Widget thumbnail(Json c, Look look) {
+    final fallback = bubble(look.icon, look.color, look.ink, size: 56);
+    if (c['image_id'] == null || farm.token == null) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.network(
+        '$apiBase/cases/${c['id']}/images/${c['image_id']}',
+        headers: {'Authorization': 'Bearer ${farm.token}'},
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        cacheWidth: 168,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+
   Widget draftCard(Json d) => Container(
     margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
@@ -503,7 +547,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
     ),
     child: Row(
       children: [
-        const Text('⏳', style: TextStyle(fontSize: 24)),
+        const Icon(Icons.schedule_rounded, color: _amber),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -597,7 +641,7 @@ class _PlayCheckState extends State<PlayCheck> {
           MaterialPageRoute(builder: (_) => PlayResult(id: match.first['id'])),
         );
       } else {
-        say('Saved! It will be sent when you’re online 📶');
+        say('Saved. It will be sent when you’re online.');
         Navigator.pop(context);
       }
     } catch (e) {
@@ -616,7 +660,7 @@ class _PlayCheckState extends State<PlayCheck> {
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
       children: [
         Text(
-          photo == null ? 'Snap your plant 📸' : 'Looking good! 👌',
+          photo == null ? 'Snap your plant' : 'Looking good!',
           style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
@@ -634,7 +678,11 @@ class _PlayCheckState extends State<PlayCheck> {
                   height: 280,
                   color: mint,
                   alignment: Alignment.center,
-                  child: const Text('🍃', style: TextStyle(fontSize: 96)),
+                  child: const Icon(
+                    Icons.center_focus_weak_rounded,
+                    size: 96,
+                    color: leafDark,
+                  ),
                 )
               : Image.file(
                   File(photo!),
@@ -688,7 +736,7 @@ class _PlayCheckState extends State<PlayCheck> {
                       color: Colors.white,
                     ),
                   )
-                : const Text('✨', style: TextStyle(fontSize: 20)),
+                : const Icon(Icons.auto_awesome_rounded),
             label: Text(busy ? 'Sending…' : 'Check my plant'),
           ),
           const SizedBox(height: 8),
@@ -818,10 +866,7 @@ class _PlayResultState extends State<PlayResult> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            look.emoji,
-                            style: const TextStyle(fontSize: 40),
-                          ),
+                          Icon(look.icon, size: 40, color: look.ink),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -848,8 +893,7 @@ class _PlayResultState extends State<PlayResult> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if (plant != null)
-                              pill('${plantEmoji(plant)} $plant', Colors.white),
+                            if (plant != null) pill(plant, Colors.white),
                             if (a?['confidence'] != null)
                               pill(
                                 '${'●' * {'low': 1, 'medium': 2, 'high': 3}[a!['confidence']]!}${'○' * (3 - {'low': 1, 'medium': 2, 'high': 3}[a['confidence']]!)}  ${a['confidence']} confidence',
@@ -881,7 +925,7 @@ class _PlayResultState extends State<PlayResult> {
                 if (steps.isNotEmpty) ...[
                   const SizedBox(height: 26),
                   const Text(
-                    'How to fix it 💪',
+                    'How to fix it',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 12),
@@ -936,7 +980,7 @@ class _PlayResultState extends State<PlayResult> {
                     context,
                     MaterialPageRoute(builder: (_) => const PlayCheck()),
                   ),
-                  icon: const Text('📸', style: TextStyle(fontSize: 18)),
+                  icon: const Icon(Icons.photo_camera_rounded),
                   label: const Text('Check another plant'),
                 ),
                 if (a != null) ...[
@@ -1021,12 +1065,30 @@ class _AuthScreenState extends State<AuthScreen> {
         // A plain scroll view keeps every field built, so off-screen fields are
         // still validated (a lazy ListView would drop them).
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 36, 24, 32),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Image.asset('assets/logo.png', width: 104, height: 104),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Image.asset(
+                  'assets/photos/farmer.jpg',
+                  height: 210,
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0.3, -0.2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/logo.png', width: 36, height: 36),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'AgroSense',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               Text(
@@ -1141,6 +1203,23 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
       ),
+    ),
+  );
+}
+
+class _Tip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _Tip(this.icon, this.text);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        bubble(icon, mint, leafDark, size: 40),
+        const SizedBox(width: 12),
+        Text(text, style: const TextStyle(fontSize: 17)),
+      ],
     ),
   );
 }

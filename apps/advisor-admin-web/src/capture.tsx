@@ -231,7 +231,8 @@ export function Capture() {
       </header>
       {!token && (
         <form className="signin" onSubmit={authenticate}>
-          <h1>{creating ? "Join AgroSense 🌱" : "Welcome back! 🌱"}</h1>
+          <img className="banner" src="/photos/tomato.jpg" alt="" />
+          <h1>{creating ? "Join AgroSense" : "Welcome back"}</h1>
           <p className="lead">
             {creating
               ? "Create an account to check your plants."

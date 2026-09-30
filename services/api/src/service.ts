@@ -16,6 +16,9 @@ import { Store, id, now } from "./db";
 import { development } from "./config";
 import { hashPassword, normalizePhone, verifyPassword } from "./auth";
 import { fieldInput, caseInput } from "./schemas";
+// Case rows plus the first photo's id, so lists can show a thumbnail.
+const CASE_LIST =
+  "SELECT *, (SELECT id FROM images WHERE case_id=cases.id ORDER BY created_at LIMIT 1) AS image_id FROM cases";
 export type Actor = { id: string; name: string; roles: string[] };
 export class AppService {
   constructor(public db: Store) {}
@@ -296,16 +299,16 @@ export class AppService {
     if (scope === "advisor") {
       this.role(a, "advisor");
       return this.db.all(
-        "SELECT * FROM cases WHERE advisor_id=? ORDER BY created_at DESC",
+        `${CASE_LIST} WHERE advisor_id=? ORDER BY created_at DESC`,
         a.id,
       );
     }
     if (scope === "admin") {
       this.role(a, "admin");
-      return this.db.all("SELECT * FROM cases ORDER BY created_at DESC");
+      return this.db.all(`${CASE_LIST} ORDER BY created_at DESC`);
     }
     return this.db.all(
-      "SELECT * FROM cases WHERE owner_id=? ORDER BY created_at DESC",
+      `${CASE_LIST} WHERE owner_id=? ORDER BY created_at DESC`,
       a.id,
     );
   }
