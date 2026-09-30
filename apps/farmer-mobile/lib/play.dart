@@ -315,6 +315,12 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
               ),
             ],
             const SizedBox(height: 20),
+            TextButton.icon(
+              onPressed: () => editServer(c),
+              icon: const Icon(Icons.dns_rounded),
+              label: Text('Server: ${serverLabel()}'),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: () => Navigator.pop(c, true),
               icon: const Icon(Icons.logout_rounded),
@@ -527,7 +533,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Image.network(
-        '$apiBase/cases/${c['id']}/images/${c['image_id']}',
+        '${farm.server}/cases/${c['id']}/images/${c['image_id']}',
         headers: {'Authorization': 'Bearer ${farm.token}'},
         width: 56,
         height: 56,
@@ -846,7 +852,7 @@ class _PlayResultState extends State<PlayResult> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(32),
                     child: Image.network(
-                      '$apiBase/cases/${widget.id}/images/${images.first['id']}',
+                      '${farm.server}/cases/${widget.id}/images/${images.first['id']}',
                       headers: {'Authorization': 'Bearer ${farm.token}'},
                       height: 260,
                       width: double.infinity,
@@ -995,6 +1001,106 @@ class _PlayResultState extends State<PlayResult> {
             ),
     );
   }
+}
+
+// ── Server address ──────────────────────────────────────────────────────────
+
+/// The server as the farmer would type it: "192.168.0.104" (port shown only
+/// when it isn't the usual 4100).
+String serverLabel() {
+  final uri = Uri.parse(farm.server);
+  return uri.port == 4100 ? uri.host : '${uri.host}:${uri.port}';
+}
+
+/// Asks for the Mac's address, checks a server answers there, and saves it.
+Future<void> editServer(BuildContext context) =>
+    showDialog(context: context, builder: (_) => const _ServerDialog());
+
+class _ServerDialog extends StatefulWidget {
+  const _ServerDialog();
+  @override
+  State<_ServerDialog> createState() => _ServerDialogState();
+}
+
+class _ServerDialogState extends State<_ServerDialog> {
+  late final address = TextEditingController(text: serverLabel());
+  bool busy = false;
+  String? error;
+
+  @override
+  void dispose() {
+    address.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await farm.setServer(address.text);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: cream,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    title: const Text(
+      'Server address',
+      style: TextStyle(fontWeight: FontWeight.w800),
+    ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'The Wi-Fi address of the computer running AgroSense, for example 192.168.0.104.',
+          style: TextStyle(color: Color(0xFF55605A)),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: address,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            prefixIcon: const Icon(Icons.dns_rounded, color: leafDark),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onSubmitted: (_) => save(),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            error!,
+            style: const TextStyle(color: coral, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: busy ? null : () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        style: FilledButton.styleFrom(minimumSize: const Size(120, 48)),
+        onPressed: busy ? null : save,
+        child: Text(busy ? 'Checking…' : 'Check & save'),
+      ),
+    ],
+  );
 }
 
 // ── Sign in / create account ────────────────────────────────────────────────
@@ -1198,6 +1304,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       )
                     : Text(creating ? 'Create account' : 'Sign in'),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () async {
+                    await editServer(context);
+                    setState(() => error = null);
+                  },
+                  icon: const Icon(Icons.dns_rounded, size: 18),
+                  label: Text('Server: ${serverLabel()} · Change'),
+                ),
               ),
             ],
           ),

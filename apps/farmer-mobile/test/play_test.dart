@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:agrosense_farmer/data.dart';
 import 'package:agrosense_farmer/play.dart';
 
 void main() {
@@ -30,6 +31,24 @@ void main() {
     );
     expect(lookFor(null, 'queued').headline, 'Looking closely…');
     expect(lookFor(null, 'failed').headline, 'Something went wrong');
+  });
+
+  test('a typed server address becomes a full base URL', () {
+    expect(FarmData.serverUrl('192.168.0.104'), 'http://192.168.0.104:4100');
+    expect(
+      FarmData.serverUrl(' 192.168.0.104:5000 '),
+      'http://192.168.0.104:5000',
+    );
+    expect(
+      FarmData.serverUrl('http://192.168.0.104:4100/'),
+      'http://192.168.0.104:4100',
+    );
+    expect(
+      FarmData.serverUrl('https://agrosense.example'),
+      'https://agrosense.example:443',
+    );
+    expect(FarmData.serverUrl(''), isNull);
+    expect(FarmData.serverUrl('http://'), isNull);
   });
 
   test('check times read like a person would say them', () {

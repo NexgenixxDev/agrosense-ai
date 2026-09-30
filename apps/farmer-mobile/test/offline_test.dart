@@ -15,8 +15,8 @@ class TestServer {
 }
 
 class TestFarm extends FarmData {
-  final TestServer server;
-  TestFarm(this.server);
+  final TestServer fake;
+  TestFarm(this.fake);
   @override
   Future<dynamic> request(
     String path, {
@@ -24,8 +24,8 @@ class TestFarm extends FarmData {
     Object? body,
     List<int>? image,
   }) async {
-    server.log.add('$method $path');
-    if (path == '/reminders' && server.rejectReminder) {
+    fake.log.add('$method $path');
+    if (path == '/reminders' && fake.rejectReminder) {
       throw const ApiException(
         400,
         'title: String must contain at most 160 character(s)',
@@ -34,18 +34,18 @@ class TestFarm extends FarmData {
     if (path == '/cases' && method == 'POST') {
       final payload = Map<String, dynamic>.from(body as Map);
       final key = payload['client_submission_id'] as String;
-      return server.cases.putIfAbsent(key, () => {'id': key, ...payload});
+      return fake.cases.putIfAbsent(key, () => {'id': key, ...payload});
     }
     if (path.endsWith('/images')) {
-      server.uploads.add(path);
-      if (server.rejectImage) {
+      fake.uploads.add(path);
+      if (fake.rejectImage) {
         throw const ApiException(
           400,
           'Use a valid JPEG or PNG, at least 224 pixels on each side',
         );
       }
-      if (server.failAfterImage) {
-        server.failAfterImage = false;
+      if (fake.failAfterImage) {
+        fake.failAfterImage = false;
         throw const SocketException(
           'Connection lost after server received image',
         );
@@ -53,14 +53,14 @@ class TestFarm extends FarmData {
       return {'id': 'image'};
     }
     if (path.endsWith('/analysis')) {
-      server.jobs.add(path);
+      fake.jobs.add(path);
       return {'state': 'queued'};
     }
     if (path == '/cases') {
-      return server.cases.values.toList();
+      return fake.cases.values.toList();
     }
     if (path.startsWith('/cases/')) {
-      return server.cases[path.split('/')[2]];
+      return fake.cases[path.split('/')[2]];
     }
     return [];
   }

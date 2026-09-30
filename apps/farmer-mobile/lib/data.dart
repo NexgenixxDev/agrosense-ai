@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+// The server address the app was built with; the farmer can change it in the app.
 const apiBase = String.fromEnvironment(
   'API_URL',
   defaultValue: 'http://10.0.2.2:4100',
@@ -31,6 +32,7 @@ class FarmData extends ChangeNotifier {
   late Database db;
   String? token;
   Json? user;
+  String server = apiBase;
   bool syncing = false;
   String status = 'Saved work stays available on this phone.';
   final secure = const FlutterSecureStorage();
@@ -68,6 +70,7 @@ class FarmData extends ChangeNotifier {
       },
     );
     if (restoreSession) {
+      server = await secure.read(key: 'server') ?? apiBase;
       token = await secure.read(key: 'session');
       final saved = await secure.read(key: 'user');
       user = saved == null ? null : jsonDecode(saved);
@@ -83,7 +86,7 @@ class FarmData extends ChangeNotifier {
     Object? body,
     List<int>? image,
   }) async {
-    final uri = Uri.parse('$apiBase$path');
+    final uri = Uri.parse('$server$path');
     final headers = {
       'Content-Type': image == null ? 'application/json' : 'image/jpeg',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -124,6 +127,39 @@ class FarmData extends ChangeNotifier {
       throw ApiException(response.statusCode, 'Unexpected server response');
     }
     return data;
+  }
+
+  /// Turns what the farmer typed ("192.168.0.104", "192.168.0.104:4100" or a
+  /// full URL) into a base URL, or null if it can't be one.
+  static String? serverUrl(String input) {
+    var s = input.trim();
+    if (s.isEmpty) return null;
+    if (!s.contains('://')) s = 'http://$s';
+    final uri = Uri.tryParse(s);
+    if (uri == null || uri.host.isEmpty || !uri.hasScheme) return null;
+    final port = uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 4100);
+    return '${uri.scheme}://${uri.host}:$port';
+  }
+
+  /// Checks that an AgroSense server answers at [input], then remembers it.
+  /// The session is kept: it is the same server under a new address.
+  Future<void> setServer(String input) async {
+    final url = serverUrl(input);
+    if (url == null) throw Exception('Type an address like 192.168.0.104');
+    try {
+      final r = await http
+          .get(Uri.parse('$url/health'))
+          .timeout(const Duration(seconds: 5));
+      if (r.statusCode != 200 || jsonDecode(r.body)['status'] != 'ok') {
+        throw const FormatException();
+      }
+    } catch (_) {
+      throw Exception('No AgroSense server answered at $url');
+    }
+    server = url;
+    await secure.write(key: 'server', value: url);
+    lastRefresh = null;
+    notifyListeners();
   }
 
   /// Signs in with a phone number and password (the real accounts).
