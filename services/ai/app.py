@@ -4,6 +4,7 @@ import binascii
 import hmac
 import io
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Literal
@@ -24,6 +25,7 @@ if len(_parents) > 2:
     load_dotenv(_parents[2] / '.env')
 Image.MAX_IMAGE_PIXELS = 24_000_000
 app = FastAPI(title='AgroSense inference service', version='0.1.0')
+log = logging.getLogger('uvicorn.error')
 
 
 class Scan(BaseModel):
@@ -109,8 +111,9 @@ def claude_client():
 
 
 async def claude_assessment(scan, image_format):
+    client = claude_client()
     try:
-        response = await claude_client().beta.messages.create(
+        response = await client.beta.messages.create(
             model=os.getenv('CLAUDE_MODEL', 'claude-opus-5-5'),
             max_tokens=16000,
             betas=['server-side-fallback-2026-07-01'],
@@ -125,8 +128,9 @@ async def claude_assessment(scan, image_format):
                 ],
             }],
         )
-    except anthropic.APIError:
+    except anthropic.APIError as e:
         # Rate limits, outages and bad keys alike: the worker retries a few times, then marks the job failed.
+        log.warning('Claude request failed: %s %s', type(e).__name__, getattr(e, 'message', e))
         raise HTTPException(502, 'Claude is unavailable') from None
     if response.stop_reason == 'refusal':
         return result('uncertain', 'The AI could not assess this photo. Try another photo or ask an extension officer.', ['ai_declined'])
@@ -146,8 +150,10 @@ def gemini_client():
 
 async def gemini_assessment(scan, raw, image_format):
     model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+    # Keep a reference: the SDK closes its HTTP connection when the client is garbage collected.
+    client = gemini_client()
     try:
-        response = await gemini_client().aio.models.generate_content(
+        response = await client.aio.models.generate_content(
             model=model,
             contents=[
                 genai_types.Part.from_bytes(data=raw, mime_type=f'image/{image_format.lower()}'),
@@ -159,8 +165,9 @@ async def gemini_assessment(scan, raw, image_format):
                 response_json_schema=ASSESSMENT_SCHEMA,
             ),
         )
-    except genai_errors.APIError:
+    except genai_errors.APIError as e:
         # Free-tier rate limits (429), outages and bad keys: the worker retries, then marks the job failed.
+        log.warning('Gemini request failed: %s %s', e.code, e.message)
         raise HTTPException(502, 'Gemini is unavailable') from None
     finish = response.candidates[0].finish_reason if response.candidates else None
     if not response.candidates or finish not in (genai_types.FinishReason.STOP, None):
