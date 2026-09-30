@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
+import anthropic
 import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -38,10 +39,13 @@ class Result(BaseModel):
     model_config = ConfigDict(extra='forbid')
     status: Literal['accepted', 'uncertain', 'unsupported', 'retake', 'unavailable']
     model_version: str = Field(min_length=1, max_length=150)
-    mode: Literal['real', 'fixture', 'unavailable']
+    mode: Literal['real', 'fixture', 'unavailable', 'claude']
     candidates: list[Candidate] = Field(max_length=3)
     reason: str = Field(min_length=1, max_length=1000)
     quality_flags: list[str] = Field(max_length=10)
+    # Claude mode only: a readable assessment for the farmer and the printed report.
+    confidence: Literal['low', 'medium', 'high'] | None = None
+    next_steps: list[str] = Field(default_factory=list, max_length=5)
 
     @model_validator(mode='after')
     def accepted_needs_candidate(self):
@@ -52,7 +56,7 @@ class Result(BaseModel):
 
 def mode():
     value = os.getenv('AI_MODE', 'unavailable')
-    if value not in ('fixture', 'real', 'unavailable'):
+    if value not in ('fixture', 'real', 'unavailable', 'claude'):
         raise RuntimeError('Unknown AI_MODE')
     if os.getenv('NODE_ENV') == 'production' and value == 'fixture':
         raise RuntimeError('Fixture inference is prohibited in production')
@@ -65,9 +69,88 @@ def authenticate(x_service_token: str = Header(default='')):
         raise HTTPException(401, 'Invalid service authentication')
 
 
+CROP_NAMES = {'tomato': 'tomato', 'maize': 'maize', 'mahangu': 'mahangu (pearl millet)', 'sorghum': 'sorghum'}
+
+CLAUDE_SYSTEM = """You look at one photograph of a crop taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
+
+- Say what you can actually see. If the photo is too blurry, dark, far away or cropped to judge, ask for a retake instead of guessing.
+- If the photo does not show the crop the farmer selected, or shows no plant, say so.
+- Name the most likely condition in plain words (for example "Healthy", "Early blight", "Nitrogen deficiency", "Fall armyworm damage"). If several are plausible, choose "uncertain" and name the most likely one.
+- Confidence reflects how clearly the photo shows it, not how common the condition is.
+- The summary is two or three plain sentences a farmer can follow: what you see and why it matters.
+- Next steps are up to four short, safe actions: inspection, removing affected leaves, watering or spacing, and when to contact a local extension officer. Do not give pesticide names or doses; say to ask an extension officer for chemical treatment."""
+
+CLAUDE_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'not_this_crop']},
+        'condition': {'type': 'string'},
+        'confidence': {'type': 'string', 'enum': ['low', 'medium', 'high']},
+        'summary': {'type': 'string'},
+        'next_steps': {'type': 'array', 'items': {'type': 'string'}},
+    },
+    'required': ['assessment', 'condition', 'confidence', 'summary', 'next_steps'],
+    'additionalProperties': False,
+}
+
+STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'not_this_crop': 'unsupported'}
+
+
+def claude_client():
+    # Reads ANTHROPIC_API_KEY. No SDK retries: the API worker retries failed jobs, and a call
+    # must finish inside the worker's 75 s request timeout and 90 s job lease.
+    return anthropic.AsyncAnthropic(timeout=60.0, max_retries=0)
+
+
+async def claude_assessment(scan, image_format):
+    try:
+        response = await claude_client().beta.messages.create(
+            model=os.getenv('CLAUDE_MODEL', 'claude-opus-5-5'),
+            max_tokens=16000,
+            betas=['server-side-fallback-2026-07-01'],
+            fallbacks='default',
+            output_config={'effort': 'medium', 'format': {'type': 'json_schema', 'schema': CLAUDE_SCHEMA}},
+            system=CLAUDE_SYSTEM,
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'image', 'source': {'type': 'base64', 'media_type': f'image/{image_format.lower()}', 'data': scan.image_base64}},
+                    {'type': 'text', 'text': f'The farmer says this is {CROP_NAMES[scan.crop]}. Assess the photo.'},
+                ],
+            }],
+        )
+    except anthropic.APIError:
+        # Rate limits, outages and bad keys alike: the worker retries a few times, then marks the job failed.
+        raise HTTPException(502, 'Claude is unavailable') from None
+    if response.stop_reason == 'refusal':
+        return result('uncertain', 'The AI could not assess this photo. Try another photo or ask an extension officer.', ['ai_declined'])
+    if response.stop_reason == 'max_tokens':
+        raise HTTPException(502, 'Claude response was cut off')
+    try:
+        data = json.loads(next(b.text for b in response.content if b.type == 'text'))
+    except (StopIteration, json.JSONDecodeError):
+        raise HTTPException(502, 'Claude response was not valid JSON') from None
+    status = STATUS_FOR[data['assessment']]
+    condition = data['condition'].strip()[:150]
+    if status == 'accepted' and not condition:
+        status = 'uncertain'
+    return Result(
+        status=status,
+        model_version=response.model[:150],
+        mode='claude',
+        candidates=[Candidate(condition=condition)] if condition and status in ('accepted', 'uncertain') else [],
+        reason=(data['summary'].strip() or 'No summary was given.')[:1000],
+        quality_flags=['ai_suggestion'],
+        confidence=data['confidence'],
+        next_steps=[s.strip()[:300] for s in data['next_steps'] if s.strip()][:5],
+    )
+
+
 def coverage():
     if mode() == 'fixture':
         return {'tomato': ['fixture_leaf_condition']}
+    if mode() == 'claude':
+        return {crop: ['ai_assessment'] for crop in CROP_NAMES} if os.getenv('ANTHROPIC_API_KEY') else {}
     if mode() != 'real' or not os.getenv('INFERENCE_URL') or not os.getenv('MODEL_VERSION'):
         return {}
     value = json.loads(os.getenv('SUPPORTED_CONDITIONS_JSON', '{}'))
@@ -77,7 +160,8 @@ def coverage():
 
 
 def result(status, reason, flags=None):
-    return Result(status=status, model_version=os.getenv('MODEL_VERSION') or 'none', mode=mode(), candidates=[], reason=reason, quality_flags=flags or [])
+    version = os.getenv('CLAUDE_MODEL', 'claude-opus-5-5') if mode() == 'claude' else os.getenv('MODEL_VERSION') or 'none'
+    return Result(status=status, model_version=version, mode=mode(), candidates=[], reason=reason, quality_flags=flags or [])
 
 
 @app.get('/health')
@@ -100,11 +184,16 @@ async def analyze(scan: Scan, idempotency_key: str = Header(default='')):
             if image.format not in ('JPEG', 'PNG') or min(image.size) < 224:
                 raise ValueError('Invalid image dimensions or format')
             image.load()
+            image_format = image.format
             # Deliberately limited check: detects near-blank input, not all blur/non-plant subjects.
             if ImageStat.Stat(image.convert('L').resize((128, 128))).stddev[0] < 3:
                 return result('retake', 'This photo has too little visible detail. Take a clear close-up in even light.', ['low_detail'])
     except (ValueError, binascii.Error, UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         return result('retake', 'Use a valid JPEG or PNG photograph at least 224 pixels on each side.', ['invalid_image'])
+    if mode() == 'claude':
+        if not os.getenv('ANTHROPIC_API_KEY'):
+            return result('unavailable', 'Set ANTHROPIC_API_KEY to enable AI analysis. Your case is saved.')
+        return await claude_assessment(scan, image_format)
     if scan.crop in ('mahangu', 'sorghum'):
         return result('unsupported', 'Automatic assessment is not enabled for this crop. Request advisor review.')
     if mode() == 'unavailable':

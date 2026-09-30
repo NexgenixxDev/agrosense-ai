@@ -66,3 +66,64 @@ def test_production_rejects_fixture_configuration(monkeypatch):
     monkeypatch.setenv('AI_MODE','fixture')
     with pytest.raises(RuntimeError, match='prohibited'):
         TestClient(app).get('/health')
+
+def fake_claude(monkeypatch, answer=None, stop_reason='end_turn', error=None):
+    """Replace the Claude client; returns the list of request kwargs it received."""
+    import json as _json
+    import app as module
+    calls = []
+    class Block:
+        type = 'text'
+        text = _json.dumps(answer or {})
+    class Response:
+        model = 'claude-opus-5-5'
+        content = [Block()]
+    Response.stop_reason = stop_reason
+    class Messages:
+        async def create(self, **kwargs):
+            calls.append(kwargs)
+            if error: raise error
+            return Response()
+    class Client:
+        class beta:
+            messages = Messages()
+    monkeypatch.setattr(module, 'claude_client', lambda: Client())
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+    return calls
+
+def test_claude_identifies_condition_with_readable_result(monkeypatch):
+    calls = fake_claude(monkeypatch, {'assessment':'identified','condition':'Early blight','confidence':'medium','summary':'Brown rings on lower leaves.','next_steps':['Remove affected leaves','Water at the base']})
+    r = send(monkeypatch, 'claude', crop='mahangu').json()
+    assert r['status'] == 'accepted' and r['mode'] == 'claude'
+    assert r['candidates'] == [{'condition':'Early blight'}]
+    assert r['confidence'] == 'medium' and r['next_steps'] == ['Remove affected leaves','Water at the base']
+    assert r['reason'] == 'Brown rings on lower leaves.' and r['quality_flags'] == ['ai_suggestion']
+    sent = calls[0]
+    assert sent['model'] == 'claude-opus-5-5' and sent['fallbacks'] == 'default'
+    assert sent['output_config']['format']['type'] == 'json_schema'
+    assert sent['messages'][0]['content'][0]['source']['media_type'] == 'image/png'
+    assert 'mahangu (pearl millet)' in sent['messages'][0]['content'][1]['text']
+
+def test_claude_retake_and_wrong_crop_have_no_candidates(monkeypatch):
+    fake_claude(monkeypatch, {'assessment':'retake','condition':'','confidence':'low','summary':'Too blurry.','next_steps':[]})
+    r = send(monkeypatch, 'claude').json(); assert r['status'] == 'retake' and r['candidates'] == []
+    fake_claude(monkeypatch, {'assessment':'not_this_crop','condition':'Maize','confidence':'high','summary':'This is maize.','next_steps':[]})
+    r = send(monkeypatch, 'claude').json(); assert r['status'] == 'unsupported' and r['candidates'] == []
+
+def test_claude_identified_without_condition_becomes_uncertain(monkeypatch):
+    fake_claude(monkeypatch, {'assessment':'identified','condition':' ','confidence':'low','summary':'Something is wrong.','next_steps':[]})
+    assert send(monkeypatch, 'claude').json()['status'] == 'uncertain'
+
+def test_claude_refusal_is_uncertain_not_an_error(monkeypatch):
+    fake_claude(monkeypatch, stop_reason='refusal')
+    r = send(monkeypatch, 'claude').json(); assert r['status'] == 'uncertain' and 'ai_declined' in r['quality_flags']
+
+def test_claude_errors_are_retryable_502(monkeypatch):
+    import anthropic, httpx2
+    error = anthropic.APIConnectionError(request=httpx2.Request('POST', 'https://api.anthropic.com/v1/messages'))
+    fake_claude(monkeypatch, error=error)
+    assert send(monkeypatch, 'claude').status_code == 502
+
+def test_claude_without_key_is_unavailable(monkeypatch):
+    monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
+    r = send(monkeypatch, 'claude').json(); assert r['status'] == 'unavailable' and not r['candidates']

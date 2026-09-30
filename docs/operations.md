@@ -1,6 +1,6 @@
 # Local operations and handover
 
-SQLite files and private images live under `data/` by default. API and worker must share the same database and image directory on local disk. Migrations in `services/api/migrations` are applied automatically and recorded once in the migrations table. WAL, foreign keys and a five-second busy timeout are enabled. Analysis jobs use a 90-second lease, a 45-second HTTP timeout and at most three automatic attempts. The provider must honor the job idempotency key to prevent repeated billing after ambiguous failures.
+SQLite files and private images live under `data/` by default. API and worker must share the same database and image directory on local disk. Migrations in `services/api/migrations` are applied automatically and recorded once in the migrations table. WAL, foreign keys and a five-second busy timeout are enabled. Analysis jobs use a 90-second lease, a 75-second HTTP timeout and at most three automatic attempts. The provider must honor the job idempotency key to prevent repeated billing after ambiguous failures.
 
 ## Development accounts
 

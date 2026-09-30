@@ -255,3 +255,20 @@ test("assignment requires a farmer's review request and never reopens a response
   assert.equal(s.detail(farmer, c.id).review_state, "responded");
   db.db.close();
 });
+test("Claude results carry confidence and next steps through the contract", () => {
+  const claude = {
+    status: "accepted",
+    model_version: "claude-opus-5-5",
+    mode: "claude",
+    candidates: [{ condition: "Early blight" }],
+    reason: "Brown rings on the lower leaves.",
+    quality_flags: ["ai_suggestion"],
+    confidence: "medium",
+    next_steps: ["Remove affected leaves"],
+  };
+  assert.deepEqual(analysisSchema.parse(claude), claude);
+  assert.throws(() => analysisSchema.parse({ ...claude, confidence: "certain" }));
+  assert.throws(() =>
+    analysisSchema.parse({ ...claude, next_steps: Array(6).fill("step") }),
+  );
+});

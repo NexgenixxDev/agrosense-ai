@@ -67,7 +67,8 @@ export async function processOne(db: Store, request: typeof fetch = fetch) {
             ),
           ).toString("base64"),
         }),
-        signal: AbortSignal.timeout(45000),
+        // Claude analysis can take tens of seconds; stays below the 90 s job lease.
+        signal: AbortSignal.timeout(75000),
       },
     );
     if (!response.ok) throw new Error("Inference service failed");

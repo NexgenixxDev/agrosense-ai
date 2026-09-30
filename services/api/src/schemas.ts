@@ -41,12 +41,14 @@ export const analysisSchema = z
       "unavailable",
     ]),
     model_version: z.string().min(1).max(150),
-    mode: z.enum(["real", "fixture", "unavailable"]),
+    mode: z.enum(["real", "fixture", "unavailable", "claude"]),
     candidates: z
       .array(z.object({ condition: z.string().min(1).max(150) }).strict())
       .max(3),
     reason: z.string().min(1).max(1000),
     quality_flags: z.array(z.string()).max(10),
+    confidence: z.enum(["low", "medium", "high"]).nullable().optional(),
+    next_steps: z.array(z.string().max(300)).max(5).optional(),
   })
   .strict()
   .superRefine((v, c) => {
