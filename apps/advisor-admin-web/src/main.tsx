@@ -64,6 +64,8 @@ function App() {
   const [response, setResponse] = useState("");
   const [correction, setCorrection] = useState("");
   const [advisor, setAdvisor] = useState("advisor-demo");
+  const [loginPhone, setLoginPhone] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginId, setLoginId] = useState(
     SIMPLE ? "admin-demo" : "advisor-demo",
   );
@@ -218,49 +220,114 @@ function App() {
         </div>
         <main className="login-form">
           <span className="eyebrow">ADVISOR & ADMIN PORTAL</span>
-          <h2>Welcome to your workspace</h2>
-          <p>Review crop cases. Share guidance. Follow progress.</p>
+          <h2>{SIMPLE ? "Welcome back! 🌱" : "Welcome to your workspace"}</h2>
+          <p>
+            {SIMPLE
+              ? "Sign in to see plant checks and print reports."
+              : "Review crop cases. Share guidance. Follow progress."}
+          </p>
           {error && (
             <div role="alert" className="notice">
               {error}
             </div>
           )}
-          <div className="dev-label">
-            <ShieldCheck size={18} /> Development environment
-          </div>
-          {!SIMPLE && (
-            <label>
-              Choose a development account
-              <select
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
-              >
-                <option value="advisor-demo">
-                  Daniel · Agricultural advisor
-                </option>
-                <option value="admin-demo">Administrator</option>
-                <option value="reviewer-demo">Content reviewer</option>
-              </select>
-            </label>
+          {SIMPLE && (
+            <form
+              className="signin"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void act(async () => {
+                  const r = await api("/auth/login", "POST", {
+                    phone: loginPhone,
+                    password: loginPassword,
+                  });
+                  // The portal is for admins; farmers use the app.
+                  if (!r.user.roles.includes("admin")) {
+                    await api("/auth/logout", "POST", {}, r.token).catch(
+                      () => {},
+                    );
+                    throw new Error(
+                      "This portal is for admins. Farmers use the AgroSense app.",
+                    );
+                  }
+                  setLoginPassword("");
+                  sessionStorage.setItem("agrosense-token", r.token);
+                  setToken(r.token);
+                });
+              }}
+            >
+              <label>
+                Phone number
+                <input
+                  type="tel"
+                  autoComplete="username"
+                  placeholder="081 234 5678"
+                  required
+                  value={loginPhone}
+                  onChange={(e) => setLoginPhone(e.target.value)}
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
+              </label>
+              <button className="primary" disabled={busy}>
+                Sign in <ArrowRight size={18} />
+              </button>
+              <p className="fine">
+                Admin accounts are created on the server with{" "}
+                <code>npm run create-admin</code>.
+              </p>
+            </form>
           )}
-          <button
-            disabled={busy || !health.development_auth}
-            className="primary"
-            onClick={() =>
-              act(async () => {
-                const r = await api("/auth/dev", "POST", { user_id: loginId });
-                sessionStorage.setItem("agrosense-token", r.token);
-                setToken(r.token);
-              })
-            }
-          >
-            Open workspace <ArrowRight size={18} />
-          </button>
-          <p className="fine">
-            {health.development_auth
-              ? "Demo accounts are for local testing. Sample content is clearly marked."
-              : "Development sign-in is disabled or the API is unavailable. Production identity integration is pending."}
-          </p>
+          {!SIMPLE && (
+            <>
+              <div className="dev-label">
+                <ShieldCheck size={18} /> Development environment
+              </div>
+              {!SIMPLE && (
+                <label>
+                  Choose a development account
+                  <select
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                  >
+                    <option value="advisor-demo">
+                      Daniel · Agricultural advisor
+                    </option>
+                    <option value="admin-demo">Administrator</option>
+                    <option value="reviewer-demo">Content reviewer</option>
+                  </select>
+                </label>
+              )}
+              <button
+                disabled={busy || !health.development_auth}
+                className="primary"
+                onClick={() =>
+                  act(async () => {
+                    const r = await api("/auth/dev", "POST", {
+                      user_id: loginId,
+                    });
+                    sessionStorage.setItem("agrosense-token", r.token);
+                    setToken(r.token);
+                  })
+                }
+              >
+                Open workspace <ArrowRight size={18} />
+              </button>
+              <p className="fine">
+                {health.development_auth
+                  ? "Demo accounts are for local testing. Sample content is clearly marked."
+                  : "Development sign-in is disabled or the API is unavailable. Production identity integration is pending."}
+              </p>
+            </>
+          )}
         </main>
       </div>
     );

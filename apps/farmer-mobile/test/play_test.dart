@@ -63,4 +63,37 @@ void main() {
     expect(find.text('high confidence'), findsOneWidget);
     expect(find.text('🍅'), findsOneWidget);
   });
+
+  testWidgets('the welcome screen signs in or creates an account', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: playTheme(), home: const AuthScreen()),
+    );
+    expect(find.text('Welcome back!'), findsOneWidget);
+    expect(find.text('Your name'), findsNothing);
+    // Nothing is sent while the form is incomplete.
+    final signIn = find.widgetWithText(FilledButton, 'Sign in');
+    await tester.ensureVisible(signIn);
+    await tester.tap(signIn);
+    await tester.pump();
+    expect(find.text('Enter your phone number'), findsOneWidget);
+    expect(find.text('Enter your password'), findsOneWidget);
+
+    await tester.tap(find.text('Create account').first);
+    await tester.pump();
+    expect(find.text('Join AgroSense'), findsOneWidget);
+    expect(find.text('Your name'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'short',
+    );
+    final create = find.widgetWithText(FilledButton, 'Create account');
+    await tester.ensureVisible(create);
+    await tester.tap(create);
+    await tester.pump();
+    expect(find.text('Tell us your name'), findsOneWidget);
+    expect(find.text('Use at least 8 characters'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

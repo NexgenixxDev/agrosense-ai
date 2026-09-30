@@ -226,7 +226,7 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
 
   Future<void> refresh() async {
     try {
-      if (farm.token == null) await farm.login();
+      if (farm.token == null) return;
       await farm.sync(force: true);
     } catch (_) {
       // Offline: the cached list and saved drafts still show.
@@ -285,90 +285,147 @@ class _PlayHomeState extends State<PlayHome> with WidgetsBindingObserver {
     ),
   );
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text(
-        '🌱 AgroSense',
-        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24),
-      ),
-      actions: [
-        IconButton(
-          tooltip: 'Tips',
-          onPressed: help,
-          icon: const Icon(Icons.help_outline_rounded),
-        ),
-      ],
-    ),
-    body: RefreshIndicator(
-      color: leaf,
-      onRefresh: refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [mint, sunshine],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(32),
+  Future<void> account() async {
+    final signOut = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: cream,
+      showDragHandle: true,
+      builder: (c) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            bubble('🧑‍🌾', mint, size: 72),
+            const SizedBox(height: 12),
+            Text(
+              farm.user?['name'] ?? 'Farmer',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
-            child: Column(
+            Text(
+              farm.user?['phone'] ?? '',
+              style: const TextStyle(color: Color(0xFF6B756B)),
+            ),
+            if (waiting.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Signing out deletes photos that haven’t been sent yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: coral),
+              ),
+            ],
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pop(c, true),
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Sign out'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (signOut == true) await farm.signOut();
+  }
+
+  @override
+  Widget build(BuildContext context) => farm.token == null
+      ? const AuthScreen()
+      : Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              '🌱 AgroSense',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Tips',
+                onPressed: help,
+                icon: const Icon(Icons.help_outline_rounded),
+              ),
+              IconButton(
+                tooltip: 'Account',
+                onPressed: account,
+                icon: const Icon(Icons.account_circle_rounded),
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
+            color: leaf,
+            onRefresh: refresh,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
-                const Text('🌿 🍅 🌽', style: TextStyle(fontSize: 46)),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [mint, sunshine],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('🌿 🍅 🌽', style: TextStyle(fontSize: 46)),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Is your plant okay?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Snap a photo and find out.',
+                        style: TextStyle(
+                          fontSize: 17,
+                          color: Color(0xFF55605A),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: check,
+                        icon: const Text('📸', style: TextStyle(fontSize: 22)),
+                        label: const Text("Let's check!"),
+                      ),
+                    ],
+                  ),
+                ),
+                if (waiting.isNotEmpty) ...[
+                  const SizedBox(height: 22),
+                  for (final d in waiting) draftCard(d),
+                ],
+                const SizedBox(height: 26),
+                Row(
+                  children: [
+                    const Text(
+                      'Your plants',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (cases.isNotEmpty) pill('${cases.length}', mint),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Is your plant okay?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Snap a photo and find out.',
-                  style: TextStyle(fontSize: 17, color: Color(0xFF55605A)),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: check,
-                  icon: const Text('📸', style: TextStyle(fontSize: 22)),
-                  label: const Text("Let's check!"),
-                ),
+                if (cases.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Text(
+                      'No checks yet. Your first one will show up here 🌱',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF6B756B)),
+                    ),
+                  ),
+                for (final c in cases) caseCard(Map<String, dynamic>.from(c)),
               ],
             ),
           ),
-          if (waiting.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            for (final d in waiting) draftCard(d),
-          ],
-          const SizedBox(height: 26),
-          Row(
-            children: [
-              const Text(
-                'Your plants',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-              ),
-              const Spacer(),
-              if (cases.isNotEmpty) pill('${cases.length}', mint),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (cases.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 28),
-              child: Text(
-                'No checks yet. Your first one will show up here 🌱',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF6B756B)),
-              ),
-            ),
-          for (final c in cases) caseCard(Map<String, dynamic>.from(c)),
-        ],
-      ),
-    ),
-  );
+        );
 
   Widget caseCard(Json c) {
     final a = analysisOf(c);
@@ -522,7 +579,7 @@ class _PlayCheckState extends State<PlayCheck> {
         jsonDecode(row['payload'] as String),
         ready: true,
       );
-      if (farm.token == null) await farm.login();
+      if (farm.token == null) throw Exception('Please sign in first.');
       await farm.sync(force: true);
       final List uploaded = await farm.cached('cases');
       final match = uploaded.where((c) => c['client_submission_id'] == draftId);
@@ -887,4 +944,194 @@ class _PlayResultState extends State<PlayResult> {
             ),
     );
   }
+}
+
+// ── Sign in / create account ────────────────────────────────────────────────
+
+class AuthScreen extends StatefulWidget {
+  const AuthScreen({super.key});
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool creating = false, busy = false, hidden = true;
+  String? error;
+  final name = TextEditingController();
+  final phone = TextEditingController();
+  final password = TextEditingController();
+  final form = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    name.dispose();
+    phone.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    if (!form.currentState!.validate()) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      if (creating) {
+        await farm.register(name.text.trim(), phone.text, password.text);
+      } else {
+        await farm.signIn(phone.text, password.text);
+      }
+    } on ApiException catch (e) {
+      setState(() => error = e.message);
+    } catch (_) {
+      setState(
+        () => error = 'Can’t reach AgroSense. Check your Wi-Fi and try again.',
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  InputDecoration field(String label, IconData icon, {String? hint}) =>
+      InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: leafDark),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Form(
+        key: form,
+        // A plain scroll view keeps every field built, so off-screen fields are
+        // still validated (a lazy ListView would drop them).
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 36, 24, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Center(child: Text('🌱', style: TextStyle(fontSize: 72))),
+              const SizedBox(height: 10),
+              Text(
+                creating ? 'Join AgroSense' : 'Welcome back!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                creating
+                    ? 'Create an account to check your plants.'
+                    : 'Sign in to check your plants.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Color(0xFF55605A)),
+              ),
+              const SizedBox(height: 26),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Sign in')),
+                  ButtonSegment(value: true, label: Text('Create account')),
+                ],
+                selected: {creating},
+                showSelectedIcon: false,
+                onSelectionChanged: (v) => setState(() {
+                  creating = v.first;
+                  error = null;
+                }),
+              ),
+              const SizedBox(height: 20),
+              if (creating) ...[
+                TextFormField(
+                  controller: name,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: field('Your name', Icons.person_rounded),
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? 'Tell us your name' : null,
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                autofillHints: const [AutofillHints.telephoneNumber],
+                decoration: field(
+                  'Phone number',
+                  Icons.phone_rounded,
+                  hint: '081 234 5678',
+                ),
+                validator: (v) =>
+                    (v ?? '').replaceAll(RegExp(r'\D'), '').length < 8
+                    ? 'Enter your phone number'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: password,
+                obscureText: hidden,
+                autofillHints: [
+                  creating ? AutofillHints.newPassword : AutofillHints.password,
+                ],
+                decoration: field('Password', Icons.lock_rounded).copyWith(
+                  helperText: creating ? 'At least 8 characters' : null,
+                  suffixIcon: IconButton(
+                    tooltip: hidden ? 'Show password' : 'Hide password',
+                    onPressed: () => setState(() => hidden = !hidden),
+                    icon: Icon(
+                      hidden
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                    ),
+                  ),
+                ),
+                validator: (v) => creating && (v ?? '').length < 8
+                    ? 'Use at least 8 characters'
+                    : (v ?? '').isEmpty
+                    ? 'Enter your password'
+                    : null,
+                onFieldSubmitted: (_) => submit(),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: peach,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    error!,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 22),
+              FilledButton(
+                onPressed: busy ? null : submit,
+                child: busy
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(creating ? 'Create account' : 'Sign in'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

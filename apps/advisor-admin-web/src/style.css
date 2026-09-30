@@ -1551,3 +1551,37 @@ td {
     border: 2px solid #e2dccf;
   }
 }
+/* Sign-in form (portal login and phone page) */
+.signin {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+.signin label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+}
+.signin input {
+  border: 2px solid #e6dfd0;
+  border-radius: 16px;
+  padding: 13px 16px;
+  font-size: 16px;
+  background: #fff;
+}
+.signin input:focus {
+  outline: none;
+  border-color: #2fa36b;
+}
+.signin .primary {
+  margin-top: 6px;
+}
+.signin code {
+  font-size: 12px;
+}
+.capture header .signout {
+  margin-left: auto;
+  font-size: 14px;
+}

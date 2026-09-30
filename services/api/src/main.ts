@@ -82,6 +82,15 @@ class ApiController {
       referral_available: true,
     }));
   }
+  @Post("auth/register") register(@Body() body: unknown, @Req() req: Request) {
+    return service.register(body, req.ip);
+  }
+  @Post("auth/login") passwordLogin(
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return service.passwordLogin(body, req.ip);
+  }
   @Post("auth/dev") login(@Body() body: unknown) {
     return service.login(body);
   }

@@ -21,7 +21,7 @@ function setup() {
   const db = new Store(":memory:");
   for (const a of [farmer, other, advisor, admin, reviewer])
     db.run(
-      "INSERT INTO users VALUES (?,?,?,?)",
+      "INSERT INTO users (id,name,roles,created_at) VALUES (?,?,?,?)",
       a.id,
       a.name,
       JSON.stringify(a.roles),

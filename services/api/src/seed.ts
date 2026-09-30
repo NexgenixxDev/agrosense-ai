@@ -12,7 +12,7 @@ for (const [id, name, roles] of [
   ["reviewer-demo", "Demo content reviewer", ["reviewer"]],
 ] as const)
   db.run(
-    "INSERT OR IGNORE INTO users VALUES (?,?,?,?)",
+    "INSERT OR IGNORE INTO users (id,name,roles,created_at) VALUES (?,?,?,?)",
     id,
     name,
     JSON.stringify(roles),

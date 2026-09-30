@@ -15,7 +15,7 @@ const TOKEN_KEY = "agrosense-farmer-token";
 
 const stored = () => {
   try {
-    return sessionStorage.getItem(TOKEN_KEY) || "";
+    return localStorage.getItem(TOKEN_KEY) || "";
   } catch {
     return "";
   }
@@ -69,42 +69,66 @@ export function Capture() {
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<Row | null>(null);
   const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
 
   async function api(path: string, body?: unknown, image?: Blob) {
-    const send = (auth: string) =>
-      fetch("/api" + path, {
-        method: body === undefined && !image ? "GET" : "POST",
-        headers: {
-          "Content-Type": image ? "image/jpeg" : "application/json",
-          ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-        },
-        body: image ?? (body === undefined ? undefined : JSON.stringify(body)),
-      });
-    let auth = token || (await signIn());
-    let r = await send(auth);
-    if (r.status === 401) {
-      // The 8-hour demo session ran out: sign in again once.
-      auth = await signIn();
-      r = await send(auth);
-    }
+    const r = await fetch("/api" + path, {
+      method: body === undefined && !image ? "GET" : "POST",
+      headers: {
+        "Content-Type": image ? "image/jpeg" : "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: image ?? (body === undefined ? undefined : JSON.stringify(body)),
+    });
     const data = await r.json().catch(() => ({}));
+    // A 401 outside sign-in means the session ended: show the sign-in form.
+    if (r.status === 401 && !path.startsWith("/auth/")) {
+      forget();
+      throw new Error("Please sign in again.");
+    }
     if (!r.ok) throw new Error(data.message || "Something went wrong.");
     return data;
   }
 
-  async function signIn() {
-    const r = await fetch("/api/auth/dev", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: "farmer-demo" }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.message || "Could not sign in.");
+  function remember(t: string) {
     try {
-      sessionStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(TOKEN_KEY, t);
     } catch {}
-    setToken(data.token);
-    return data.token as string;
+    setToken(t);
+  }
+
+  function forget() {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch {}
+    setToken("");
+  }
+
+  async function authenticate(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setAuthBusy(true);
+    try {
+      const r = creating
+        ? await api("/auth/register", { name, phone, password })
+        : await api("/auth/login", { phone, password });
+      setPassword("");
+      remember(r.token);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function signOut() {
+    await api("/auth/logout", {}).catch(() => {});
+    forget();
+    again();
   }
 
   useEffect(
@@ -202,8 +226,71 @@ export function Capture() {
           <Sprout />
         </span>
         AgroSense<span className="ai">AI</span>
+        {token && (
+          <button className="text-button signout" onClick={signOut}>
+            Sign out
+          </button>
+        )}
       </header>
-      {stage === "pick" && (
+      {!token && (
+        <form className="signin" onSubmit={authenticate}>
+          <h1>{creating ? "Join AgroSense 🌱" : "Welcome back! 🌱"}</h1>
+          <p className="lead">
+            {creating
+              ? "Create an account to check your plants."
+              : "Sign in to check your plants."}
+          </p>
+          {creating && (
+            <label>
+              Your name
+              <input
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+          )}
+          <label>
+            Phone number
+            <input
+              type="tel"
+              required
+              autoComplete="tel"
+              placeholder="081 234 5678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              required
+              minLength={creating ? 8 : undefined}
+              autoComplete={creating ? "new-password" : "current-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button className="primary big" disabled={authBusy}>
+            {creating ? "Create account" : "Sign in"}
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setCreating(!creating);
+              setError("");
+            }}
+          >
+            {creating
+              ? "Already have an account? Sign in"
+              : "New here? Create an account"}
+          </button>
+        </form>
+      )}
+      {token && stage === "pick" && (
         <>
           <h1>Check your crop</h1>
           <p className="lead">

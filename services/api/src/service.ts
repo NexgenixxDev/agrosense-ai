@@ -5,6 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
   ServiceUnavailableException,
+  HttpException,
 } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
@@ -13,6 +14,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { Store, id, now } from "./db";
 import { development } from "./config";
+import { hashPassword, normalizePhone, verifyPassword } from "./auth";
 import { fieldInput, caseInput } from "./schemas";
 export type Actor = { id: string; name: string; roles: string[] };
 export class AppService {
@@ -46,7 +48,7 @@ export class AppService {
       token,
       expires_in: 28800,
       development_only: true,
-      user: { ...user, roles: JSON.parse(user.roles) },
+      user: this.publicUser(user),
     };
   }
   hash(s: string) {
@@ -61,7 +63,108 @@ export class AppService {
       now(),
     );
     if (!user) throw new UnauthorizedException("Session expired");
-    return { ...user, roles: JSON.parse(user.roles) };
+    return this.publicUser(user);
+  }
+  // Never send password hashes (or anything else internal) to a client.
+  publicUser(u: any): Actor & { phone: string | null } {
+    return {
+      id: u.id,
+      name: u.name,
+      roles: JSON.parse(u.roles),
+      phone: u.phone ?? null,
+    };
+  }
+  session(user: any) {
+    const actor = this.publicUser(user);
+    // Farmers stay signed in on their phone for 30 days; staff for 8 hours.
+    const hours = actor.roles.includes("farmer") ? 30 * 24 : 8;
+    const token = randomBytes(32).toString("hex");
+    this.db.run(
+      "INSERT INTO sessions VALUES (?,?,?)",
+      this.hash(token),
+      user.id,
+      new Date(Date.now() + hours * 3600000).toISOString(),
+    );
+    return { token, expires_in: hours * 3600, user: actor };
+  }
+  // Counts attempts per key in a fixed window; true once the limit is reached.
+  limited(key: string, limit: number, windowMs: number, record: boolean) {
+    const row = this.db.one("SELECT * FROM auth_attempts WHERE key=?", key);
+    const fresh = !row || Date.now() - row.window_start > windowMs;
+    if (!fresh && row.count >= limit) return true;
+    if (record)
+      this.db.run(
+        "INSERT INTO auth_attempts VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,window_start=excluded.window_start",
+        key,
+        fresh ? 1 : row.count + 1,
+        fresh ? Date.now() : row.window_start,
+      );
+    return false;
+  }
+  async register(input: unknown, ip = "unknown") {
+    const v = z
+      .object({
+        name: z.string().trim().min(1).max(80),
+        phone: z.string().max(30),
+        password: z.string().min(8).max(128),
+      })
+      .strict()
+      .parse(input);
+    const phone = normalizePhone(v.phone);
+    if (!phone)
+      throw new BadRequestException(
+        "Enter a phone number like 081 234 5678 or +264 81 234 5678",
+      );
+    if (this.limited(`register:${ip}`, 10, 3600000, true))
+      throw new HttpException("Too many sign-ups. Try again in an hour.", 429);
+    if (this.db.one("SELECT id FROM users WHERE phone=?", phone))
+      throw new ConflictException(
+        "An account with this phone number already exists. Sign in instead.",
+      );
+    const key = id();
+    this.db.run(
+      "INSERT INTO users (id,name,roles,created_at,phone,password_hash) VALUES (?,?,?,?,?,?)",
+      key,
+      v.name,
+      JSON.stringify(["farmer"]),
+      now(),
+      phone,
+      await hashPassword(v.password),
+    );
+    this.db.audit(key, "account.registered", key);
+    return this.session(this.db.one("SELECT * FROM users WHERE id=?", key));
+  }
+  async passwordLogin(input: unknown, ip = "unknown") {
+    const v = z
+      .object({ phone: z.string().max(30), password: z.string().max(128) })
+      .strict()
+      .parse(input);
+    const phone = normalizePhone(v.phone) ?? v.phone;
+    const window = 15 * 60000;
+    // 5 wrong passwords lock a number for 15 minutes; 20 from one address lock it.
+    if (
+      this.limited(`login:${phone}`, 5, window, false) ||
+      this.limited(`login-ip:${ip}`, 20, window, false)
+    )
+      throw new HttpException(
+        "Too many wrong passwords. Wait 15 minutes and try again.",
+        429,
+      );
+    const user = this.db.one("SELECT * FROM users WHERE phone=?", phone);
+    // Hash even when the number is unknown, so timing doesn't reveal accounts.
+    const ok = await verifyPassword(
+      v.password,
+      user?.password_hash ??
+        "scrypt:16384:8:1:AAAAAAAAAAAAAAAAAAAAAA==:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    );
+    if (!user || !ok) {
+      this.limited(`login:${phone}`, 5, window, true);
+      this.limited(`login-ip:${ip}`, 20, window, true);
+      throw new UnauthorizedException("Phone number or password is incorrect");
+    }
+    this.db.run("DELETE FROM auth_attempts WHERE key=?", `login:${phone}`);
+    this.db.audit(user.id, "account.signed_in", user.id);
+    return this.session(user);
   }
   role(actor: Actor, role: string) {
     if (!actor.roles.includes(role)) throw new ForbiddenException();
@@ -550,7 +653,7 @@ export class AppService {
     this.role(a, "admin");
     return this.db
       .all("SELECT * FROM users")
-      .map((u) => ({ ...u, roles: JSON.parse(u.roles) }));
+      .map((u) => ({ ...this.publicUser(u), created_at: u.created_at }));
   }
   audit(a: Actor) {
     this.role(a, "admin");

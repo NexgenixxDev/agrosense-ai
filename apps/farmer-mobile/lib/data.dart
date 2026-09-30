@@ -30,6 +30,7 @@ class ApiException implements Exception {
 class FarmData extends ChangeNotifier {
   late Database db;
   String? token;
+  Json? user;
   bool syncing = false;
   String status = 'Saved work stays available on this phone.';
   final secure = const FlutterSecureStorage();
@@ -68,6 +69,8 @@ class FarmData extends ChangeNotifier {
     );
     if (restoreSession) {
       token = await secure.read(key: 'session');
+      final saved = await secure.read(key: 'user');
+      user = saved == null ? null : jsonDecode(saved);
     }
     if (automaticSync) {
       timer = Timer.periodic(const Duration(seconds: 20), (_) => sync());
@@ -101,7 +104,8 @@ class FarmData extends ChangeNotifier {
       // e.g. a proxy's HTML error page; the status code still decides what happens.
       data = null;
     }
-    if (response.statusCode == 401) {
+    // A 401 from sign-in means a wrong password, not an expired session.
+    if (response.statusCode == 401 && !path.startsWith('/auth/')) {
       token = null;
       await secure.delete(key: 'session');
       notifyListeners();
@@ -120,6 +124,57 @@ class FarmData extends ChangeNotifier {
       throw ApiException(response.statusCode, 'Unexpected server response');
     }
     return data;
+  }
+
+  /// Signs in with a phone number and password (the real accounts).
+  Future<void> signIn(String phone, String password) async => start(
+    await request(
+      '/auth/login',
+      method: 'POST',
+      body: {'phone': phone, 'password': password},
+    ),
+  );
+
+  /// Creates a farmer account and signs straight in.
+  Future<void> register(String name, String phone, String password) async =>
+      start(
+        await request(
+          '/auth/register',
+          method: 'POST',
+          body: {'name': name, 'phone': phone, 'password': password},
+        ),
+      );
+
+  Future<void> start(Json session) async {
+    token = session['token'];
+    user = Map<String, dynamic>.from(session['user']);
+    await secure.write(key: 'session', value: token);
+    await secure.write(key: 'user', value: jsonEncode(user));
+    notifyListeners();
+    try {
+      await refresh();
+    } catch (_) {}
+  }
+
+  /// Ends the session here and on the server, and forgets this account's data
+  /// on the phone (cached results and unsent photos), so the next person
+  /// signing in doesn't see or upload them.
+  Future<void> signOut() async {
+    try {
+      await request('/auth/logout', method: 'POST', body: {});
+    } catch (_) {}
+    token = null;
+    user = null;
+    await secure.delete(key: 'session');
+    await secure.delete(key: 'user');
+    for (final d in await drafts()) {
+      final photo = File(d['photo'] as String);
+      if (await photo.exists()) await photo.delete();
+    }
+    await db.delete('drafts');
+    await db.delete('cache');
+    lastRefresh = null;
+    notifyListeners();
   }
 
   Future<void> login() async {
