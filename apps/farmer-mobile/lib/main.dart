@@ -416,6 +416,20 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
       ],
     ),
   );
+  // One-line AI result for the case list; list rows carry analysis as JSON text.
+  String aiLine(Json c) {
+    if (c['processing_state'] == 'failed') {
+      return 'Analysis failed — open to retry';
+    }
+    final raw = c['analysis'];
+    if (raw == null) return 'The AI is looking at your photo…';
+    final Json a = raw is String ? jsonDecode(raw) : raw;
+    final List candidates = a['candidates'] ?? [];
+    return candidates.isNotEmpty
+        ? candidates.first['condition']
+        : _CasePageState.statusText[a['status']] ?? friendly(a['status']);
+  }
+
   Widget caseTile(Json c) => card(
     ListTile(
       contentPadding: EdgeInsets.zero,
@@ -428,7 +442,9 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        '${friendly(c['processing_state'])}\nReview: ${friendly(c['review_state'])}',
+        simple
+            ? aiLine(c)
+            : '${friendly(c['processing_state'])}\nReview: ${friendly(c['review_state'])}',
         style: const TextStyle(fontSize: 14, height: 1.6),
       ),
       trailing: const Icon(Icons.chevron_right),
