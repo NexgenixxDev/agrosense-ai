@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -5,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'data.dart';
 import 'reminders.dart';
 
+// School-project mode: pick the crop, take a photo, see the AI result.
+// Set to false to bring back fields, reminders, symptom questions and advisor review.
+const simple = true;
 const green = Color(0xFF166534);
 const ink = Color(0xFF17251C);
 final farm = FarmData();
@@ -469,29 +473,34 @@ class _FarmerHomeState extends State<FarmerHome> with WidgetsBindingObserver {
       ],
     ),
     bottomNavigationBar: NavigationBar(
-      selectedIndex: tab,
+      // Simple mode drops My Farm (tab 2), so Help sits at position 2 but stays tab 3.
+      selectedIndex: simple && tab == 3 ? 2 : tab,
       onDestinationSelected: (v) {
         if (v == 1) {
           action(capture);
         } else {
-          setState(() => tab = v);
+          setState(() => tab = simple && v == 2 ? 3 : v);
         }
       },
-      destinations: const [
-        NavigationDestination(
+      destinations: [
+        const NavigationDestination(
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home),
           label: 'Home',
         ),
-        NavigationDestination(
+        const NavigationDestination(
           icon: Icon(Icons.add_a_photo_outlined),
           label: 'Check Crop',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.grass_outlined),
-          label: 'My Farm',
+        if (!simple)
+          const NavigationDestination(
+            icon: Icon(Icons.grass_outlined),
+            label: 'My Farm',
+          ),
+        const NavigationDestination(
+          icon: Icon(Icons.help_outline),
+          label: 'Help',
         ),
-        NavigationDestination(icon: Icon(Icons.help_outline), label: 'Help'),
       ],
     ),
     body: SafeArea(
@@ -1053,7 +1062,16 @@ class _CropCheckState extends State<CropCheck> {
         await farm.login();
       }
       await farm.sync(force: true);
-      if (mounted) {
+      final List uploaded = await farm.cached('cases');
+      final match = uploaded.where((c) => c['client_submission_id'] == draftId);
+      if (!mounted) return;
+      if (simple && match.isNotEmpty) {
+        // Uploaded: show the result screen, which waits for the AI analysis.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => CasePage(id: match.first['id'])),
+        );
+      } else {
         Navigator.pop(context);
       }
     } catch (e) {
@@ -1097,27 +1115,31 @@ class _CropCheckState extends State<CropCheck> {
                   fieldId = null;
                 }),
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          key: ValueKey(crop),
-          initialValue: fieldId,
-          decoration: const InputDecoration(labelText: 'Field (optional)'),
-          items: [
-            const DropdownMenuItem<String>(
-              value: null,
-              child: Text('No field selected'),
-            ),
-            ...widget.fields
-                .where((f) => f['crop'] == crop)
-                .map(
-                  (f) => DropdownMenuItem<String>(
-                    value: f['id'],
-                    child: Text(f['name']),
+        if (!simple) ...[
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            key: ValueKey(crop),
+            initialValue: fieldId,
+            decoration: const InputDecoration(labelText: 'Field (optional)'),
+            items: [
+              const DropdownMenuItem<String>(
+                value: null,
+                child: Text('No field selected'),
+              ),
+              ...widget.fields
+                  .where((f) => f['crop'] == crop)
+                  .map(
+                    (f) => DropdownMenuItem<String>(
+                      value: f['id'],
+                      child: Text(f['name']),
+                    ),
                   ),
-                ),
-          ],
-          onChanged: photo != null ? null : (v) => setState(() => fieldId = v),
-        ),
+            ],
+            onChanged: photo != null
+                ? null
+                : (v) => setState(() => fieldId = v),
+          ),
+        ],
         const SizedBox(height: 20),
         if (photo == null) ...[
           Container(
@@ -1160,58 +1182,71 @@ class _CropCheckState extends State<CropCheck> {
               style: TextStyle(color: green, fontSize: 13),
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'What have you noticed?',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 18),
-          ...inputs.entries.map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 17),
-              child: TextField(
-                controller: e.value,
-                maxLength: e.key == 'duration' || e.key == 'insects'
-                    ? 100
-                    : 200,
-                decoration: InputDecoration(
-                  labelText: labels[e.key],
-                  counterText: '',
+          if (!simple) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'What have you noticed?',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 18),
+            ...inputs.entries.map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 17),
+                child: TextField(
+                  controller: e.value,
+                  maxLength: e.key == 'duration' || e.key == 'insects'
+                      ? 100
+                      : 200,
+                  decoration: InputDecoration(
+                    labelText: labels[e.key],
+                    counterText: '',
+                  ),
+                  onChanged: (_) => save(),
                 ),
-                onChanged: (_) => save(),
               ),
             ),
-          ),
+          ],
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: consent,
             onChanged: (v) => setState(() => consent = v!),
-            title: const Text(
-              'I agree to send this photo and observations for assessment.',
-              style: TextStyle(fontSize: 15),
+            title: Text(
+              simple
+                  ? 'I agree to send this photo for AI analysis.'
+                  : 'I agree to send this photo and observations for assessment.',
+              style: const TextStyle(fontSize: 15),
             ),
-            subtitle: const Text(
-              'Required to upload. Photos may be processed by the configured AI provider.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            value: training,
-            onChanged: (v) {
-              setState(() => training = v!);
-              save();
-            },
-            title: const Text(
-              'Optional: allow use for future model research.',
-              style: TextStyle(fontSize: 15),
+            subtitle: Text(
+              simple
+                  ? 'The photo is analysed by Claude, an AI model from Anthropic.'
+                  : 'Required to upload. Photos may be processed by the configured AI provider.',
+              style: const TextStyle(fontSize: 12),
             ),
           ),
+          if (!simple)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: training,
+              onChanged: (v) {
+                setState(() => training = v!);
+                save();
+              },
+              title: const Text(
+                'Optional: allow use for future model research.',
+                style: TextStyle(fontSize: 15),
+              ),
+            ),
           const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: busy || !consent ? null : submit,
             icon: const Icon(Icons.cloud_upload_outlined),
-            label: Text(busy ? 'Saving…' : 'Save and submit crop check'),
+            label: Text(
+              busy
+                  ? 'Saving…'
+                  : simple
+                  ? 'Analyse my crop'
+                  : 'Save and submit crop check',
+            ),
           ),
           TextButton(
             onPressed: busy
@@ -1261,10 +1296,26 @@ class _CasePageState extends State<CasePage> {
   Json? data;
   String? error;
   bool busy = false;
+  Timer? poll;
   @override
   void initState() {
     super.initState();
     load();
+    // Keep checking while the AI is still working on this photo.
+    poll = Timer.periodic(const Duration(seconds: 4), (_) {
+      final state = data?['processing_state'];
+      if (state == 'completed' || state == 'failed') {
+        poll?.cancel();
+      } else {
+        load();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    poll?.cancel();
+    super.dispose();
   }
 
   Future<void> load() async {
@@ -1427,9 +1478,29 @@ class _CasePageState extends State<CasePage> {
                 block(
                   'AI assessment',
                   a == null
-                      ? const Text(
-                          'No result yet. Refresh to check progress. Your case is saved.',
+                      ? Row(
+                          children: [
+                            if (data!['processing_state'] != 'failed') ...[
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            Expanded(
+                              child: Text(
+                                data!['processing_state'] == 'failed'
+                                    ? 'The analysis could not finish. Try again below.'
+                                    : 'The AI is looking at your photo…',
+                              ),
+                            ),
+                          ],
                         )
+                      : a['mode'] == 'claude'
+                      ? aiResult(a)
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1474,101 +1545,167 @@ class _CasePageState extends State<CasePage> {
                           ],
                         ),
                 ),
-                block(
-                  'Guidance and next steps',
-                  guidance == null
-                      ? const Text(
-                          'No matching reviewed guidance is available. Request an advisor review for the next step.',
-                          style: TextStyle(height: 1.5),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (guidance['development_only'] == 1)
-                              const Text(
-                                'DEVELOPMENT EXAMPLE',
-                                style: TextStyle(
-                                  color: Color(0xFFB45309),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            Text(
-                              guidance['body'],
-                              style: const TextStyle(height: 1.5),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Version ${guidance['version']} · Reviewed ${guidance['reviewed_at']}\n${guidance['sources'].join('\n')}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                ),
-                block(
-                  'Advisor review',
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Status: ${friendly(data!['review_state'])}'),
-                      const SizedBox(height: 10),
-                      if (data!['advisor_id'] == null)
-                        const Text(
-                          'No advisor is assigned yet. A response time is not guaranteed.',
-                          style: TextStyle(fontSize: 14, height: 1.5),
-                        ),
-                      ...data!['reviews'].map<Widget>(
-                        (r) => Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Column(
+                if (!simple) ...[
+                  block(
+                    'Guidance and next steps',
+                    guidance == null
+                        ? const Text(
+                            'No matching reviewed guidance is available. Request an advisor review for the next step.',
+                            style: TextStyle(height: 1.5),
+                          )
+                        : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Advisor reviewed',
-                                style: TextStyle(
-                                  color: green,
-                                  fontWeight: FontWeight.bold,
+                              if (guidance['development_only'] == 1)
+                                const Text(
+                                  'DEVELOPMENT EXAMPLE',
+                                  style: TextStyle(
+                                    color: Color(0xFFB45309),
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
                               Text(
-                                r['response'],
+                                guidance['body'],
                                 style: const TextStyle(height: 1.5),
                               ),
-                              if (r['correction'] != null)
-                                Text('Correction: ${r['correction']}'),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Version ${guidance['version']} · Reviewed ${guidance['reviewed_at']}\n${guidance['sources'].join('\n')}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ],
                           ),
+                  ),
+                  block(
+                    'Advisor review',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Status: ${friendly(data!['review_state'])}'),
+                        const SizedBox(height: 10),
+                        if (data!['advisor_id'] == null)
+                          const Text(
+                            'No advisor is assigned yet. A response time is not guaranteed.',
+                            style: TextStyle(fontSize: 14, height: 1.5),
+                          ),
+                        ...data!['reviews'].map<Widget>(
+                          (r) => Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Advisor reviewed',
+                                  style: TextStyle(
+                                    color: green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  r['response'],
+                                  style: const TextStyle(height: 1.5),
+                                ),
+                                if (r['correction'] != null)
+                                  Text('Correction: ${r['correction']}'),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                if (data!['review_state'] == 'not_requested')
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => post('review'),
-                    icon: const Icon(Icons.person_outline),
-                    label: const Text('Request advisor review'),
-                  ),
+                  if (data!['review_state'] == 'not_requested')
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => post('review'),
+                      icon: const Icon(Icons.person_outline),
+                      label: const Text('Request advisor review'),
+                    ),
+                ],
                 if (data!['processing_state'] == 'failed')
                   FilledButton(
-                    onPressed: busy ? null : () => post('retry'),
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            await post('retry');
+                            // Start watching again for the new attempt.
+                            poll?.cancel();
+                            poll = Timer.periodic(
+                              const Duration(seconds: 4),
+                              (_) => data?['processing_state'] == 'completed'
+                                  ? poll?.cancel()
+                                  : load(),
+                            );
+                          },
                     child: const Text('Retry analysis'),
                   ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : follow,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 52),
+                if (!simple) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : follow,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                    ),
+                    icon: const Icon(Icons.history),
+                    label: const Text('Record a follow-up'),
                   ),
-                  icon: const Icon(Icons.history),
-                  label: const Text('Record a follow-up'),
-                ),
-                const SizedBox(height: 16),
-                ...data!['followups'].map<Widget>(
-                  (f) => block(titleCase(f['outcome']), Text(f['notes'])),
-                ),
+                  const SizedBox(height: 16),
+                  ...data!['followups'].map<Widget>(
+                    (f) => block(titleCase(f['outcome']), Text(f['notes'])),
+                  ),
+                ],
               ],
             ),
     );
   }
+
+  static const statusText = {
+    'accepted': 'Condition identified',
+    'uncertain': 'Not sure — check the plant in person',
+    'retake': 'Photo unclear — please take another',
+    'unsupported': 'This doesn’t look like the selected crop',
+    'unavailable': 'AI analysis is not set up',
+  };
+
+  Widget aiResult(Json a) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        statusText[a['status']] ?? friendly(a['status']),
+        style: const TextStyle(fontSize: 13, color: Color(0xFF687961)),
+      ),
+      for (final c in a['candidates'])
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            c['condition'],
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+        ),
+      if (a['confidence'] != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text('Confidence: ${a['confidence']}'),
+        ),
+      const SizedBox(height: 12),
+      Text(a['reason'], style: const TextStyle(height: 1.5)),
+      if ((a['next_steps'] as List? ?? []).isNotEmpty) ...[
+        const SizedBox(height: 16),
+        const Text(
+          'What you can do next',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        for (final (i, s) in (a['next_steps'] as List).indexed)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text('${i + 1}. $s', style: const TextStyle(height: 1.4)),
+          ),
+      ],
+      const SizedBox(height: 14),
+      const Text(
+        'AI suggestion from one photo, not a verified diagnosis. Ask an extension officer before using any chemical treatment.',
+        style: TextStyle(fontSize: 12, color: Color(0xFF75816D), height: 1.4),
+      ),
+    ],
+  );
 }

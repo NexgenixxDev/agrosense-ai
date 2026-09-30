@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Leaf,
   LogOut,
+  Printer,
   Search,
   ShieldCheck,
   Sprout,
@@ -21,6 +22,18 @@ import {
 } from "lucide-react";
 import "./style.css";
 type Row = Record<string, any>;
+// School-project mode: photo → AI result → printed report, one admin login.
+// Set to false to bring back the advisor, guidance and people screens.
+const SIMPLE = true;
+const analysisOf = (c: Row): Row | null =>
+  typeof c.analysis === "string" ? JSON.parse(c.analysis) : c.analysis;
+const statusText: Record<string, string> = {
+  accepted: "Condition identified",
+  uncertain: "Uncertain — check in person",
+  retake: "Photo unclear — retake needed",
+  unsupported: "Not the selected crop",
+  unavailable: "AI analysis not configured",
+};
 const format = (v: string) =>
   new Intl.DateTimeFormat("en-NA", {
     dateStyle: "medium",
@@ -48,7 +61,9 @@ function App() {
   const [response, setResponse] = useState("");
   const [correction, setCorrection] = useState("");
   const [advisor, setAdvisor] = useState("advisor-demo");
-  const [loginId, setLoginId] = useState("advisor-demo");
+  const [loginId, setLoginId] = useState(
+    SIMPLE ? "admin-demo" : "advisor-demo",
+  );
   const [showDraft, setShowDraft] = useState(false);
   async function api(
     path: string,
@@ -210,19 +225,21 @@ function App() {
           <div className="dev-label">
             <ShieldCheck size={18} /> Development environment
           </div>
-          <label>
-            Choose a development account
-            <select
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-            >
-              <option value="advisor-demo">
-                Daniel · Agricultural advisor
-              </option>
-              <option value="admin-demo">Administrator</option>
-              <option value="reviewer-demo">Content reviewer</option>
-            </select>
-          </label>
+          {!SIMPLE && (
+            <label>
+              Choose a development account
+              <select
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+              >
+                <option value="advisor-demo">
+                  Daniel · Agricultural advisor
+                </option>
+                <option value="admin-demo">Administrator</option>
+                <option value="reviewer-demo">Content reviewer</option>
+              </select>
+            </label>
+          )}
           <button
             disabled={busy || !health.development_auth}
             className="primary"
@@ -261,17 +278,20 @@ function App() {
               : "ADVISOR WORKSPACE"}
         </div>
         <nav>
-          {[
-            { name: "Overview", icon: LayoutDashboard },
-            { name: "Case queue", icon: ClipboardList },
-            { name: "Guidance library", icon: BookOpen },
-            ...(admin
-              ? [
-                  { name: "People", icon: Users },
-                  { name: "Activity log", icon: ShieldCheck },
-                ]
-              : []),
-          ]
+          {(SIMPLE
+            ? [{ name: "Overview", icon: LayoutDashboard }]
+            : [
+                { name: "Overview", icon: LayoutDashboard },
+                { name: "Case queue", icon: ClipboardList },
+                { name: "Guidance library", icon: BookOpen },
+                ...(admin
+                  ? [
+                      { name: "People", icon: Users },
+                      { name: "Activity log", icon: ShieldCheck },
+                    ]
+                  : []),
+              ]
+          )
             .filter(
               (i) =>
                 !reviewer || ["Overview", "Guidance library"].includes(i.name),
@@ -334,16 +354,20 @@ function App() {
                 }).format(new Date())}
               </span>
               <h1>
-                {page === "Overview"
-                  ? `Good to see you, ${user.name.split(" ")[0]}.`
-                  : page}
+                {SIMPLE
+                  ? "Crop results"
+                  : page === "Overview"
+                    ? `Good to see you, ${user.name.split(" ")[0]}.`
+                    : page}
               </h1>
               <p>
-                {page === "Overview"
-                  ? "A little attention today. A healthier harvest tomorrow."
-                  : page === "Case queue"
-                    ? "The next step in a farmer’s crop-health journey."
-                    : "Locally relevant knowledge, with a traceable review history."}
+                {SIMPLE
+                  ? "Photos from the farmer app, analysed by AI. Open one to print its report."
+                  : page === "Overview"
+                    ? "A little attention today. A healthier harvest tomorrow."
+                    : page === "Case queue"
+                      ? "The next step in a farmer’s crop-health journey."
+                      : "Locally relevant knowledge, with a traceable review history."}
               </p>
             </div>
             <button
@@ -368,7 +392,7 @@ function App() {
               </button>
             </div>
           )}
-          {page === "Overview" && (
+          {page === "Overview" && !SIMPLE && (
             <>
               <section className="hero">
                 <div>
@@ -461,12 +485,18 @@ function App() {
               <div className="panel-heading">
                 <div>
                   <h2>
-                    {page === "Overview" ? "Your crop cases" : "Case queue"}
+                    {SIMPLE
+                      ? "All crop checks"
+                      : page === "Overview"
+                        ? "Your crop cases"
+                        : "Case queue"}
                   </h2>
                   <p>
-                    {admin
-                      ? "Assign requested cases to an available advisor."
-                      : "Only cases assigned to you appear here."}
+                    {SIMPLE
+                      ? "Newest first."
+                      : admin
+                        ? "Assign requested cases to an available advisor."
+                        : "Only cases assigned to you appear here."}
                   </p>
                 </div>
                 <span className="count">{cases.length} cases</span>
@@ -481,16 +511,18 @@ function App() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
-                <select
-                  aria-label="Review status"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                >
-                  <option value="all">All review states</option>
-                  <option value="requested">Review requested</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="responded">Responded</option>
-                </select>
+                {!SIMPLE && (
+                  <select
+                    aria-label="Review status"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  >
+                    <option value="all">All review states</option>
+                    <option value="requested">Review requested</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="responded">Responded</option>
+                  </select>
+                )}
               </div>
               {filtered.length ? (
                 <div className="table-wrap">
@@ -501,7 +533,7 @@ function App() {
                         <th>Farmer</th>
                         <th>Submitted</th>
                         <th>Processing</th>
-                        <th>Review</th>
+                        <th>{SIMPLE ? "AI result" : "Review"}</th>
                         <th />
                       </tr>
                     </thead>
@@ -527,9 +559,18 @@ function App() {
                             </span>
                           </td>
                           <td>
-                            <span className={"badge " + c.review_state}>
-                              {label(c.review_state)}
-                            </span>
+                            {SIMPLE ? (
+                              <span className="badge">
+                                {analysisOf(c)?.candidates?.[0]?.condition ??
+                                  (analysisOf(c)
+                                    ? statusText[analysisOf(c)!.status]
+                                    : "Waiting for analysis")}
+                              </span>
+                            ) : (
+                              <span className={"badge " + c.review_state}>
+                                {label(c.review_state)}
+                              </span>
+                            )}
                           </td>
                           <td>
                             <button
@@ -556,9 +597,11 @@ function App() {
                       : "Your next crop case starts here"}
                   </h3>
                   <p>
-                    {admin
-                      ? "Submit a crop check in the farmer app, then assign its review here."
-                      : "When an administrator assigns a farmer’s case to you, it will appear in this queue."}
+                    {SIMPLE
+                      ? "Take a photo in the farmer app; its AI result appears here."
+                      : admin
+                        ? "Submit a crop check in the farmer app, then assign its review here."
+                        : "When an administrator assigns a farmer’s case to you, it will appear in this queue."}
                   </p>
                 </div>
               )}
@@ -568,7 +611,7 @@ function App() {
               </div>
             </section>
           )}
-          {page === "Overview" && (
+          {page === "Overview" && !SIMPLE && (
             <div className="bottom-grid">
               <section className="panel coverage">
                 <div className="panel-heading">
@@ -763,169 +806,235 @@ function App() {
               </button>
             </div>
             <div className="drawer-content">
-              <div className="tags">
-                <span className="badge">
-                  {label(selected.processing_state)}
-                </span>
-                <span className="badge">{label(selected.review_state)}</span>
-              </div>
-              <div className="photos">
-                {photos.map((p) => (
-                  <img key={p} src={p} alt="Farmer-submitted crop photograph" />
-                ))}
-              </div>
-              <h3>Farmer observations</h3>
-              <dl>
-                {Object.entries(selected.symptoms).map(([k, v]) => (
-                  <React.Fragment key={k}>
-                    <dt>{label(k)}</dt>
-                    <dd>{String(v) || "Not provided"}</dd>
-                  </React.Fragment>
-                ))}
-              </dl>
-              <div className="result-box">
-                <h3>AI suggestion</h3>
-                {selected.analysis ? (
-                  <>
+              {SIMPLE && (
+                <button
+                  className="primary no-print"
+                  disabled={!selected.analysis}
+                  onClick={() => window.print()}
+                >
+                  <Printer size={17} /> Print report
+                </button>
+              )}
+              <div className="report">
+                <div className="print-only report-title">
+                  <strong>AgroSense AI · Crop report</strong>
+                  <span>Printed {format(new Date().toISOString())}</span>
+                </div>
+                <div className="tags">
+                  <span className="badge">
+                    {label(selected.processing_state)}
+                  </span>
+                  {!SIMPLE && (
                     <span className="badge">
-                      {selected.analysis.mode} · {selected.analysis.status}
+                      {label(selected.review_state)}
                     </span>
-                    <p>{selected.analysis.reason}</p>
-                    {selected.analysis.candidates.map((c: Row) => (
-                      <strong key={c.condition}>{label(c.condition)}</strong>
-                    ))}
-                  </>
+                  )}
+                </div>
+                <div className="photos">
+                  {photos.map((p) => (
+                    <img
+                      key={p}
+                      src={p}
+                      alt="Farmer-submitted crop photograph"
+                    />
+                  ))}
+                </div>
+                {SIMPLE ? (
+                  <dl>
+                    <dt>Crop</dt>
+                    <dd>{label(selected.crop)}</dd>
+                    <dt>Submitted</dt>
+                    <dd>{format(selected.created_at)}</dd>
+                    <dt>Farmer</dt>
+                    <dd>{selected.owner_id}</dd>
+                    <dt>Case</dt>
+                    <dd>{selected.id}</dd>
+                  </dl>
                 ) : (
-                  <p>
-                    Analysis is {label(selected.processing_state)}. No
-                    diagnostic result is available.
-                  </p>
+                  <>
+                    <h3>Farmer observations</h3>
+                    <dl>
+                      {Object.entries(selected.symptoms).map(([k, v]) => (
+                        <React.Fragment key={k}>
+                          <dt>{label(k)}</dt>
+                          <dd>{String(v) || "Not provided"}</dd>
+                        </React.Fragment>
+                      ))}
+                    </dl>
+                  </>
                 )}
+                <div className="result-box">
+                  <h3>AI result</h3>
+                  {selected.analysis ? (
+                    <>
+                      <span className="badge">
+                        {statusText[selected.analysis.status] ??
+                          selected.analysis.status}
+                        {selected.analysis.confidence &&
+                          ` · ${selected.analysis.confidence} confidence`}
+                      </span>
+                      {selected.analysis.candidates.map((c: Row) => (
+                        <strong key={c.condition}>{label(c.condition)}</strong>
+                      ))}
+                      <p>{selected.analysis.reason}</p>
+                      {!!selected.analysis.next_steps?.length && (
+                        <>
+                          <h4>Suggested next steps</h4>
+                          <ol>
+                            {selected.analysis.next_steps.map((s: string) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ol>
+                        </>
+                      )}
+                      <small>
+                        {selected.analysis.mode === "claude"
+                          ? `AI suggestion from one photo (${selected.analysis.model_version}), not a verified diagnosis. Check with an agricultural extension officer before treating.`
+                          : `${selected.analysis.mode} · ${selected.analysis.model_version}`}
+                      </small>
+                    </>
+                  ) : (
+                    <p>
+                      Analysis is {label(selected.processing_state)}. No result
+                      is available yet.
+                    </p>
+                  )}
+                </div>
               </div>
-              <h3>Guidance shown to farmer</h3>
-              <p>
-                {selected.advice?.body ||
-                  "No matching reviewed guidance is available. Expert review is recommended."}
-              </p>
-              {selected.advice && (
-                <small>
-                  Version {selected.advice.version} ·{" "}
-                  {selected.advice.development_only
-                    ? "Development sample"
-                    : `Reviewer: ${selected.advice.reviewer_id}`}
-                </small>
-              )}
-              <h3>Advisor responses</h3>
-              {selected.reviews.length ? (
-                selected.reviews.map((r: Row) => (
-                  <div className="review" key={r.id}>
-                    <strong>Advisor reviewed · {format(r.created_at)}</strong>
-                    <p>{r.response}</p>
-                    {r.correction && (
-                      <p>Correction and reason: {r.correction}</p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="muted">No advisor response yet.</p>
-              )}
-              <h3>Follow-up observations</h3>
-              {selected.followups.map((f: Row) => (
-                <p key={f.id}>
-                  <strong>{f.outcome}</strong> · {f.notes}
-                </p>
-              ))}
-              {!selected.followups.length && (
-                <p className="muted">No follow-up recorded.</p>
-              )}
-              {admin &&
-                !["requested", "assigned"].includes(selected.review_state) && (
-                  <p className="muted">
-                    {selected.review_state === "not_requested"
-                      ? "The farmer has not requested an advisor review."
-                      : "This review has been answered."}
+              {!SIMPLE && (
+                <>
+                  <h3>Guidance shown to farmer</h3>
+                  <p>
+                    {selected.advice?.body ||
+                      "No matching reviewed guidance is available. Expert review is recommended."}
                   </p>
-                )}
-              {admin &&
-                ["requested", "assigned"].includes(selected.review_state) && (
-                  <div className="form-section">
-                    <h3>Assign an advisor</h3>
-                    <select
-                      value={advisor}
-                      onChange={(e) => setAdvisor(e.target.value)}
-                    >
-                      {users
-                        .filter((u) => u.roles.includes("advisor"))
-                        .map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name}
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      className="primary"
-                      disabled={busy}
-                      onClick={() =>
-                        act(async () => {
+                  {selected.advice && (
+                    <small>
+                      Version {selected.advice.version} ·{" "}
+                      {selected.advice.development_only
+                        ? "Development sample"
+                        : `Reviewer: ${selected.advice.reviewer_id}`}
+                    </small>
+                  )}
+                  <h3>Advisor responses</h3>
+                  {selected.reviews.length ? (
+                    selected.reviews.map((r: Row) => (
+                      <div className="review" key={r.id}>
+                        <strong>
+                          Advisor reviewed · {format(r.created_at)}
+                        </strong>
+                        <p>{r.response}</p>
+                        {r.correction && (
+                          <p>Correction and reason: {r.correction}</p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="muted">No advisor response yet.</p>
+                  )}
+                  <h3>Follow-up observations</h3>
+                  {selected.followups.map((f: Row) => (
+                    <p key={f.id}>
+                      <strong>{f.outcome}</strong> · {f.notes}
+                    </p>
+                  ))}
+                  {!selected.followups.length && (
+                    <p className="muted">No follow-up recorded.</p>
+                  )}
+                  {admin &&
+                    !["requested", "assigned"].includes(
+                      selected.review_state,
+                    ) && (
+                      <p className="muted">
+                        {selected.review_state === "not_requested"
+                          ? "The farmer has not requested an advisor review."
+                          : "This review has been answered."}
+                      </p>
+                    )}
+                  {admin &&
+                    ["requested", "assigned"].includes(
+                      selected.review_state,
+                    ) && (
+                      <div className="form-section">
+                        <h3>Assign an advisor</h3>
+                        <select
+                          value={advisor}
+                          onChange={(e) => setAdvisor(e.target.value)}
+                        >
+                          {users
+                            .filter((u) => u.roles.includes("advisor"))
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          className="primary"
+                          disabled={busy}
+                          onClick={() =>
+                            act(async () => {
+                              setSelected(
+                                await api(
+                                  `/admin/cases/${selected.id}/assignment`,
+                                  "POST",
+                                  { advisor_id: advisor },
+                                ),
+                              );
+                              await load();
+                            })
+                          }
+                        >
+                          Assign review
+                        </button>
+                      </div>
+                    )}
+                  {user.roles.includes("advisor") && (
+                    <form
+                      className="form-section"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void act(async () => {
                           setSelected(
                             await api(
-                              `/admin/cases/${selected.id}/assignment`,
+                              `/advisor/cases/${selected.id}/response`,
                               "POST",
-                              { advisor_id: advisor },
+                              { response, correction: correction || undefined },
                             ),
                           );
+                          setResponse("");
+                          setCorrection("");
                           await load();
-                        })
-                      }
+                        });
+                      }}
                     >
-                      Assign review
-                    </button>
-                  </div>
-                )}
-              {user.roles.includes("advisor") && (
-                <form
-                  className="form-section"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void act(async () => {
-                      setSelected(
-                        await api(
-                          `/advisor/cases/${selected.id}/response`,
-                          "POST",
-                          { response, correction: correction || undefined },
-                        ),
-                      );
-                      setResponse("");
-                      setCorrection("");
-                      await load();
-                    });
-                  }}
-                >
-                  <h3>Share your assessment</h3>
-                  <label>
-                    Practical next steps
-                    <textarea
-                      required
-                      minLength={5}
-                      maxLength={4000}
-                      value={response}
-                      onChange={(e) => setResponse(e.target.value)}
-                      placeholder="Explain what to check and when to follow up."
-                    />
-                  </label>
-                  <label>
-                    Correction and reason (optional)
-                    <textarea
-                      maxLength={1000}
-                      value={correction}
-                      onChange={(e) => setCorrection(e.target.value)}
-                    />
-                  </label>
-                  <button className="primary" disabled={busy}>
-                    Send advisor response
-                    <ArrowRight size={17} />
-                  </button>
-                </form>
+                      <h3>Share your assessment</h3>
+                      <label>
+                        Practical next steps
+                        <textarea
+                          required
+                          minLength={5}
+                          maxLength={4000}
+                          value={response}
+                          onChange={(e) => setResponse(e.target.value)}
+                          placeholder="Explain what to check and when to follow up."
+                        />
+                      </label>
+                      <label>
+                        Correction and reason (optional)
+                        <textarea
+                          maxLength={1000}
+                          value={correction}
+                          onChange={(e) => setCorrection(e.target.value)}
+                        />
+                      </label>
+                      <button className="primary" disabled={busy}>
+                        Send advisor response
+                        <ArrowRight size={17} />
+                      </button>
+                    </form>
+                  )}
+                </>
               )}
             </div>
           </section>

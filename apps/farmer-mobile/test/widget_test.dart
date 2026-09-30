@@ -10,7 +10,12 @@ void main() {
       expect(find.text('Take a photo'), findsOneWidget);
       expect(find.text('Choose from gallery'), findsOneWidget);
       expect(find.text('Save and submit crop check'), findsNothing);
-      expect(find.text('No field selected'), findsOneWidget);
+      expect(find.text('Analyse my crop'), findsNothing);
+      // Simple mode hides the field picker; the full app shows it.
+      expect(
+        find.text('No field selected'),
+        simple ? findsNothing : findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
