@@ -1234,7 +1234,7 @@ class _CropCheckState extends State<CropCheck> {
             ),
             subtitle: Text(
               simple
-                  ? 'The photo is analysed by Claude, an AI model from Anthropic.'
+                  ? 'The photo is sent to an online AI service (Google Gemini or Anthropic Claude) for analysis.'
                   : 'Required to upload. Photos may be processed by the configured AI provider.',
               style: const TextStyle(fontSize: 12),
             ),
@@ -1515,7 +1515,7 @@ class _CasePageState extends State<CasePage> {
                             ),
                           ],
                         )
-                      : a['mode'] == 'claude'
+                      : a['mode'] == 'claude' || a['mode'] == 'gemini'
                       ? aiResult(a)
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

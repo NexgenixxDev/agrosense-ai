@@ -41,7 +41,7 @@ export const analysisSchema = z
       "unavailable",
     ]),
     model_version: z.string().min(1).max(150),
-    mode: z.enum(["real", "fixture", "unavailable", "claude"]),
+    mode: z.enum(["real", "fixture", "unavailable", "claude", "gemini"]),
     candidates: z
       .array(z.object({ condition: z.string().min(1).max(150) }).strict())
       .max(3),

@@ -255,7 +255,7 @@ test("assignment requires a farmer's review request and never reopens a response
   assert.equal(s.detail(farmer, c.id).review_state, "responded");
   db.db.close();
 });
-test("Claude results carry confidence and next steps through the contract", () => {
+test("Claude and Gemini results carry confidence and next steps through the contract", () => {
   const claude = {
     status: "accepted",
     model_version: "claude-opus-5-5",
@@ -267,7 +267,15 @@ test("Claude results carry confidence and next steps through the contract", () =
     next_steps: ["Remove affected leaves"],
   };
   assert.deepEqual(analysisSchema.parse(claude), claude);
-  assert.throws(() => analysisSchema.parse({ ...claude, confidence: "certain" }));
+  const gemini = {
+    ...claude,
+    mode: "gemini",
+    model_version: "gemini-2.5-flash",
+  };
+  assert.deepEqual(analysisSchema.parse(gemini), gemini);
+  assert.throws(() =>
+    analysisSchema.parse({ ...claude, confidence: "certain" }),
+  );
   assert.throws(() =>
     analysisSchema.parse({ ...claude, next_steps: Array(6).fill("step") }),
   );

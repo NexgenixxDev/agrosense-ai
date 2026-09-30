@@ -12,8 +12,10 @@ The configured provider is responsible for non-plant detection, blur detection, 
 
 Missing dependencies: licensed model/provider, coverage evidence, provider-specific adapter, local held-out evaluation and agronomist-approved guidance. No local performance or diagnostic accuracy is asserted.
 
-## Claude mode
+## Claude and Gemini modes
 
 `AI_MODE=claude` sends each photo to Claude (`CLAUDE_MODEL`, default `claude-opus-5-5`) with `ANTHROPIC_API_KEY`. Claude returns a fixed JSON shape (assessment, condition, confidence, summary, next steps), which the service maps onto the result contract: identified → accepted, uncertain → uncertain, retake → retake, not the selected crop → unsupported. The summary becomes `reason`; `confidence` and `next_steps` are extra fields. Every result carries the `ai_suggestion` flag and is an AI suggestion from one photo, not a verified diagnosis. The prompt tells Claude not to name pesticides or doses. All four crops are assessed. API errors return 502 so the worker retries; a declined request becomes an uncertain result.
 
 Each analysis is one Claude request with one image (roughly 1,500–2,500 input tokens), billed to the key's account.
+
+`AI_MODE=gemini` does the same with Google Gemini (`GEMINI_MODEL`, default `gemini-2.5-flash`) and `GEMINI_API_KEY`, using the same instructions and JSON schema, so results look identical in the apps and the printed report. Gemini's free tier has request limits: a rate-limited request returns 502 and the worker retries it with increasing delays. On the free tier Google may use submitted photos to improve its products. A response blocked by Gemini's safety filters becomes an uncertain result.

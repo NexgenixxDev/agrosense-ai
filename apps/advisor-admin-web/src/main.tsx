@@ -888,7 +888,7 @@ function App() {
                         </>
                       )}
                       <small>
-                        {selected.analysis.mode === "claude"
+                        {["claude", "gemini"].includes(selected.analysis.mode)
                           ? `AI suggestion from one photo (${selected.analysis.model_version}), not a verified diagnosis. Check with an agricultural extension officer before treating.`
                           : `${selected.analysis.mode} · ${selected.analysis.model_version}`}
                       </small>

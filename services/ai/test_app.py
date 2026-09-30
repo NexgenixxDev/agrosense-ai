@@ -127,3 +127,58 @@ def test_claude_errors_are_retryable_502(monkeypatch):
 def test_claude_without_key_is_unavailable(monkeypatch):
     monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     r = send(monkeypatch, 'claude').json(); assert r['status'] == 'unavailable' and not r['candidates']
+
+def fake_gemini(monkeypatch, answer=None, finish='STOP', error=None, candidates=True):
+    """Replace the Gemini client; returns the list of request kwargs it received."""
+    import json as _json
+    import app as module
+    from google.genai import types
+    calls = []
+    class Candidate:
+        finish_reason = getattr(types.FinishReason, finish)
+    class Response:
+        model_version = 'gemini-2.5-flash'
+        text = _json.dumps(answer or {})
+    Response.candidates = [Candidate()] if candidates else []
+    class Models:
+        async def generate_content(self, **kwargs):
+            calls.append(kwargs)
+            if error: raise error
+            return Response()
+    class Client:
+        class aio:
+            models = Models()
+    monkeypatch.setattr(module, 'gemini_client', lambda: Client())
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+    return calls
+
+def test_gemini_identifies_condition_with_readable_result(monkeypatch):
+    calls = fake_gemini(monkeypatch, {'assessment':'identified','condition':'Leaf rust','confidence':'high','summary':'Orange pustules on the leaves.','next_steps':['Remove badly affected leaves']})
+    r = send(monkeypatch, 'gemini', crop='maize').json()
+    assert r['status'] == 'accepted' and r['mode'] == 'gemini' and r['model_version'] == 'gemini-2.5-flash'
+    assert r['candidates'] == [{'condition':'Leaf rust'}] and r['confidence'] == 'high'
+    assert r['next_steps'] == ['Remove badly affected leaves'] and r['quality_flags'] == ['ai_suggestion']
+    sent = calls[0]
+    assert sent['model'] == 'gemini-2.5-flash'
+    assert sent['contents'][0].inline_data.mime_type == 'image/png'
+    assert 'maize' in sent['contents'][1]
+    assert sent['config'].response_mime_type == 'application/json'
+    assert sent['config'].response_json_schema['required'] == ['assessment','condition','confidence','summary','next_steps']
+
+def test_gemini_safety_block_is_uncertain_not_an_error(monkeypatch):
+    fake_gemini(monkeypatch, finish='SAFETY')
+    r = send(monkeypatch, 'gemini').json(); assert r['status'] == 'uncertain' and 'ai_declined' in r['quality_flags']
+    fake_gemini(monkeypatch, candidates=False)
+    assert send(monkeypatch, 'gemini').json()['status'] == 'uncertain'
+
+def test_gemini_errors_and_truncation_are_retryable_502(monkeypatch):
+    from google.genai import errors
+    fake_gemini(monkeypatch, error=errors.ClientError(429, {'error': {'message': 'quota'}}))
+    assert send(monkeypatch, 'gemini').status_code == 502
+    fake_gemini(monkeypatch, {'assessment':'identified'}, finish='MAX_TOKENS')
+    assert send(monkeypatch, 'gemini').status_code == 502
+
+def test_gemini_without_key_is_unavailable(monkeypatch):
+    monkeypatch.delenv('GEMINI_API_KEY', raising=False)
+    monkeypatch.delenv('GOOGLE_API_KEY', raising=False)
+    r = send(monkeypatch, 'gemini').json(); assert r['status'] == 'unavailable' and 'GEMINI_API_KEY' in r['reason']

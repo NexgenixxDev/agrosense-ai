@@ -10,6 +10,9 @@ from typing import Literal
 
 import anthropic
 import httpx
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
 from PIL import Image, ImageStat, UnidentifiedImageError
@@ -39,11 +42,11 @@ class Result(BaseModel):
     model_config = ConfigDict(extra='forbid')
     status: Literal['accepted', 'uncertain', 'unsupported', 'retake', 'unavailable']
     model_version: str = Field(min_length=1, max_length=150)
-    mode: Literal['real', 'fixture', 'unavailable', 'claude']
+    mode: Literal['real', 'fixture', 'unavailable', 'claude', 'gemini']
     candidates: list[Candidate] = Field(max_length=3)
     reason: str = Field(min_length=1, max_length=1000)
     quality_flags: list[str] = Field(max_length=10)
-    # Claude mode only: a readable assessment for the farmer and the printed report.
+    # Claude and Gemini modes only: a readable assessment for the farmer and the printed report.
     confidence: Literal['low', 'medium', 'high'] | None = None
     next_steps: list[str] = Field(default_factory=list, max_length=5)
 
@@ -56,7 +59,7 @@ class Result(BaseModel):
 
 def mode():
     value = os.getenv('AI_MODE', 'unavailable')
-    if value not in ('fixture', 'real', 'unavailable', 'claude'):
+    if value not in ('fixture', 'real', 'unavailable', 'claude', 'gemini'):
         raise RuntimeError('Unknown AI_MODE')
     if os.getenv('NODE_ENV') == 'production' and value == 'fixture':
         raise RuntimeError('Fixture inference is prohibited in production')
@@ -71,7 +74,7 @@ def authenticate(x_service_token: str = Header(default='')):
 
 CROP_NAMES = {'tomato': 'tomato', 'maize': 'maize', 'mahangu': 'mahangu (pearl millet)', 'sorghum': 'sorghum'}
 
-CLAUDE_SYSTEM = """You look at one photograph of a crop taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
+ASSESSMENT_INSTRUCTIONS = """You look at one photograph of a crop taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
 
 - Say what you can actually see. If the photo is too blurry, dark, far away or cropped to judge, ask for a retake instead of guessing.
 - If the photo does not show the crop the farmer selected, or shows no plant, say so.
@@ -80,7 +83,7 @@ CLAUDE_SYSTEM = """You look at one photograph of a crop taken by a farmer in Nam
 - The summary is two or three plain sentences a farmer can follow: what you see and why it matters.
 - Next steps are up to four short, safe actions: inspection, removing affected leaves, watering or spacing, and when to contact a local extension officer. Do not give pesticide names or doses; say to ask an extension officer for chemical treatment."""
 
-CLAUDE_SCHEMA = {
+ASSESSMENT_SCHEMA = {
     'type': 'object',
     'properties': {
         'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'not_this_crop']},
@@ -92,6 +95,9 @@ CLAUDE_SCHEMA = {
     'required': ['assessment', 'condition', 'confidence', 'summary', 'next_steps'],
     'additionalProperties': False,
 }
+
+# The environment variable holding each AI mode's key.
+AI_KEYS = {'claude': 'ANTHROPIC_API_KEY', 'gemini': 'GEMINI_API_KEY'}
 
 STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'not_this_crop': 'unsupported'}
 
@@ -109,8 +115,8 @@ async def claude_assessment(scan, image_format):
             max_tokens=16000,
             betas=['server-side-fallback-2026-07-01'],
             fallbacks='default',
-            output_config={'effort': 'medium', 'format': {'type': 'json_schema', 'schema': CLAUDE_SCHEMA}},
-            system=CLAUDE_SYSTEM,
+            output_config={'effort': 'medium', 'format': {'type': 'json_schema', 'schema': ASSESSMENT_SCHEMA}},
+            system=ASSESSMENT_INSTRUCTIONS,
             messages=[{
                 'role': 'user',
                 'content': [
@@ -130,14 +136,54 @@ async def claude_assessment(scan, image_format):
         data = json.loads(next(b.text for b in response.content if b.type == 'text'))
     except (StopIteration, json.JSONDecodeError):
         raise HTTPException(502, 'Claude response was not valid JSON') from None
+    return assessment_result(data, response.model, 'claude')
+
+
+def gemini_client():
+    # Reads GEMINI_API_KEY. Timeout is in milliseconds; stays inside the worker's 75 s.
+    return genai.Client(http_options=genai_types.HttpOptions(timeout=60_000))
+
+
+async def gemini_assessment(scan, raw, image_format):
+    model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+    try:
+        response = await gemini_client().aio.models.generate_content(
+            model=model,
+            contents=[
+                genai_types.Part.from_bytes(data=raw, mime_type=f'image/{image_format.lower()}'),
+                f'The farmer says this is {CROP_NAMES[scan.crop]}. Assess the photo.',
+            ],
+            config=genai_types.GenerateContentConfig(
+                system_instruction=ASSESSMENT_INSTRUCTIONS,
+                response_mime_type='application/json',
+                response_json_schema=ASSESSMENT_SCHEMA,
+            ),
+        )
+    except genai_errors.APIError:
+        # Free-tier rate limits (429), outages and bad keys: the worker retries, then marks the job failed.
+        raise HTTPException(502, 'Gemini is unavailable') from None
+    finish = response.candidates[0].finish_reason if response.candidates else None
+    if not response.candidates or finish not in (genai_types.FinishReason.STOP, None):
+        if finish == genai_types.FinishReason.MAX_TOKENS:
+            raise HTTPException(502, 'Gemini response was cut off')
+        # Blocked by Gemini's safety filters or no answer: tell the farmer rather than retrying.
+        return result('uncertain', 'The AI could not assess this photo. Try another photo or ask an extension officer.', ['ai_declined'])
+    try:
+        data = json.loads(response.text)
+    except (TypeError, json.JSONDecodeError):
+        raise HTTPException(502, 'Gemini response was not valid JSON') from None
+    return assessment_result(data, response.model_version or model, 'gemini')
+
+
+def assessment_result(data, model, source):
     status = STATUS_FOR[data['assessment']]
     condition = data['condition'].strip()[:150]
     if status == 'accepted' and not condition:
         status = 'uncertain'
     return Result(
         status=status,
-        model_version=response.model[:150],
-        mode='claude',
+        model_version=model[:150],
+        mode=source,
         candidates=[Candidate(condition=condition)] if condition and status in ('accepted', 'uncertain') else [],
         reason=(data['summary'].strip() or 'No summary was given.')[:1000],
         quality_flags=['ai_suggestion'],
@@ -149,8 +195,8 @@ async def claude_assessment(scan, image_format):
 def coverage():
     if mode() == 'fixture':
         return {'tomato': ['fixture_leaf_condition']}
-    if mode() == 'claude':
-        return {crop: ['ai_assessment'] for crop in CROP_NAMES} if os.getenv('ANTHROPIC_API_KEY') else {}
+    if mode() in AI_KEYS:
+        return {crop: ['ai_assessment'] for crop in CROP_NAMES} if os.getenv(AI_KEYS[mode()]) else {}
     if mode() != 'real' or not os.getenv('INFERENCE_URL') or not os.getenv('MODEL_VERSION'):
         return {}
     value = json.loads(os.getenv('SUPPORTED_CONDITIONS_JSON', '{}'))
@@ -160,7 +206,7 @@ def coverage():
 
 
 def result(status, reason, flags=None):
-    version = os.getenv('CLAUDE_MODEL', 'claude-opus-5-5') if mode() == 'claude' else os.getenv('MODEL_VERSION') or 'none'
+    version = {'claude': os.getenv('CLAUDE_MODEL', 'claude-opus-5-5'), 'gemini': os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')}.get(mode()) or os.getenv('MODEL_VERSION') or 'none'
     return Result(status=status, model_version=version, mode=mode(), candidates=[], reason=reason, quality_flags=flags or [])
 
 
@@ -190,9 +236,11 @@ async def analyze(scan: Scan, idempotency_key: str = Header(default='')):
                 return result('retake', 'This photo has too little visible detail. Take a clear close-up in even light.', ['low_detail'])
     except (ValueError, binascii.Error, UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         return result('retake', 'Use a valid JPEG or PNG photograph at least 224 pixels on each side.', ['invalid_image'])
-    if mode() == 'claude':
-        if not os.getenv('ANTHROPIC_API_KEY'):
-            return result('unavailable', 'Set ANTHROPIC_API_KEY to enable AI analysis. Your case is saved.')
+    if mode() in AI_KEYS:
+        if not os.getenv(AI_KEYS[mode()]):
+            return result('unavailable', f'Set {AI_KEYS[mode()]} to enable AI analysis. Your case is saved.')
+        if mode() == 'gemini':
+            return await gemini_assessment(scan, raw, image_format)
         return await claude_assessment(scan, image_format)
     if scan.crop in ('mahangu', 'sorghum'):
         return result('unsupported', 'Automatic assessment is not enabled for this crop. Request advisor review.')
