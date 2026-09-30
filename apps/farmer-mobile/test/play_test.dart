@@ -23,7 +23,7 @@ void main() {
     expect(lookFor(result('retake'), 'completed').color, sky);
     expect(
       lookFor(result('unsupported'), 'completed').headline,
-      'No crop plant found',
+      'No plant found',
     );
     expect(lookFor(null, 'queued').headline, 'Looking closely…');
     expect(lookFor(null, 'failed').headline, 'Something went wrong');

@@ -102,7 +102,7 @@ Look lookFor(Json? a, String? processing) {
     case 'retake':
       return const Look('📸', 'Try another photo', sky);
     case 'unsupported':
-      return const Look('🌵', 'No crop plant found', lavender);
+      return const Look('🔍', 'No plant found', lavender);
     default:
       return const Look('😴', 'The AI is resting', lavender);
   }

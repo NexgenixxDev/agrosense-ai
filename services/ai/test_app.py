@@ -108,7 +108,7 @@ def test_claude_identifies_condition_with_readable_result(monkeypatch):
 def test_claude_retake_and_wrong_crop_have_no_candidates(monkeypatch):
     fake_claude(monkeypatch, {'plant':'Tomato','assessment':'retake','condition':'','confidence':'low','summary':'Too blurry.','solutions':[]})
     r = send(monkeypatch, 'claude').json(); assert r['status'] == 'retake' and r['candidates'] == []
-    fake_claude(monkeypatch, {'plant':'Tomato','assessment':'not_a_crop','condition':'Maize','confidence':'high','summary':'This is maize.','solutions':[]})
+    fake_claude(monkeypatch, {'plant':'Tomato','assessment':'no_plant','condition':'Maize','confidence':'high','summary':'This is maize.','solutions':[]})
     r = send(monkeypatch, 'claude').json(); assert r['status'] == 'unsupported' and r['candidates'] == []
 
 def test_claude_identified_without_condition_becomes_uncertain(monkeypatch):
@@ -190,7 +190,7 @@ def test_unknown_crop_lets_the_ai_name_the_plant(monkeypatch):
     assert r['plant'] == 'Maize' and r['candidates'] == [{'condition':'Fall armyworm damage'}]
     assert len(r['next_steps']) == 2
     assert 'did not say which plant' in calls[0]['contents'][1]
-    calls = fake_claude(monkeypatch, {'plant':'No plant visible','assessment':'not_a_crop','condition':'','confidence':'high','summary':'This is a dog.','solutions':[]})
+    calls = fake_claude(monkeypatch, {'plant':'No plant visible','assessment':'no_plant','condition':'','confidence':'high','summary':'This is a dog.','solutions':[]})
     r = send(monkeypatch, 'claude', crop='unknown').json()
     assert r['status'] == 'unsupported' and r['plant'] is None
     assert 'did not say which plant' in calls[0]['messages'][0]['content'][1]['text']

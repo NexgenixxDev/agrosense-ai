@@ -83,21 +83,21 @@ def request_text(crop):
         return 'The farmer did not say which plant this is. Identify it and assess the photo.'
     return f'The farmer says this is {CROP_NAMES[crop]}. Assess the photo.'
 
-ASSESSMENT_INSTRUCTIONS = """You look at one photograph taken by a farmer in Namibia and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
+ASSESSMENT_INSTRUCTIONS = """You look at one photograph of a plant, usually taken by a farmer in Namibia, and give a short, practical assessment. It is shown to the farmer and printed for an agricultural advisor.
 
-- First identify the plant in plain words (for example "Tomato", "Maize", "Mahangu (pearl millet)", "Sorghum", "Spinach"). If the farmer named a crop and the photo clearly shows a different plant, trust the photo and say so in the summary.
+- First identify the plant in plain words. Any plant counts: field crops ("Tomato", "Maize", "Mahangu (pearl millet)", "Sorghum"), vegetables, fruit trees, house plants and flowers ("Zebra plant", "Rose"). If the farmer named a crop and the photo clearly shows a different plant, trust the photo and say so in the summary.
 - Say what you can actually see. If the photo is too blurry, dark, far away or cropped to judge, ask for a retake instead of guessing.
-- If the photo shows no crop plant at all, choose "not_a_crop" and leave the plant empty.
+- If the photo shows no plant at all, choose "no_plant" and leave the plant empty.
 - Name the most likely condition in plain words (for example "Healthy", "Early blight", "Nitrogen deficiency", "Fall armyworm damage"). If several are plausible, choose "uncertain" and name the most likely one.
 - Confidence reflects how clearly the photo shows it, not how common the condition is.
 - The summary is two or three plain sentences a farmer can follow: what you see and why it matters.
-- Solutions are up to five practical steps, most important first: what to remove or change (watering, spacing, weeding, crop rotation, field hygiene), organic or low-cost options, and, when a product is really needed, the type of product (for example "a copper-based fungicide" or "an insecticide registered for fall armyworm"). Never give doses, mixing rates or spray schedules: tell the farmer to follow the product label and to ask a local extension officer or agro-dealer which products are approved in Namibia. For a healthy plant, give simple care tips."""
+- Solutions are up to five practical steps, most important first: what to remove or change (watering, spacing, weeding, crop rotation, field hygiene), organic or low-cost options, and, when a product is really needed, the type of product (for example "a copper-based fungicide" or "an insecticide registered for fall armyworm"). Never give doses, mixing rates or spray schedules: tell the farmer to follow the product label and to ask a local extension officer or agro-dealer which products are approved in Namibia. For house plants, give home care steps (watering, light, pot and drainage, repotting). For a healthy plant, give simple care tips."""
 
 ASSESSMENT_SCHEMA = {
     'type': 'object',
     'properties': {
         'plant': {'type': 'string'},
-        'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'not_a_crop']},
+        'assessment': {'type': 'string', 'enum': ['identified', 'uncertain', 'retake', 'no_plant']},
         'condition': {'type': 'string'},
         'confidence': {'type': 'string', 'enum': ['low', 'medium', 'high']},
         'summary': {'type': 'string'},
@@ -110,7 +110,7 @@ ASSESSMENT_SCHEMA = {
 # The environment variable holding each AI mode's key.
 AI_KEYS = {'claude': 'ANTHROPIC_API_KEY', 'gemini': 'GEMINI_API_KEY'}
 
-STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'not_a_crop': 'unsupported'}
+STATUS_FOR = {'identified': 'accepted', 'uncertain': 'uncertain', 'retake': 'retake', 'no_plant': 'unsupported'}
 
 
 def claude_client():
@@ -205,7 +205,7 @@ def assessment_result(data, model, source):
         quality_flags=['ai_suggestion'],
         confidence=data['confidence'],
         next_steps=[s.strip()[:300] for s in data['solutions'] if s.strip()][:5],
-        # A photo with no crop plant has no plant to name, whatever the model wrote there.
+        # A photo with no plant has no plant to name, whatever the model wrote there.
         plant=(data['plant'].strip()[:100] or None) if status != 'unsupported' else None,
     )
 

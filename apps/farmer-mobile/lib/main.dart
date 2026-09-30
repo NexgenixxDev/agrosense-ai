@@ -1694,7 +1694,7 @@ class _CasePageState extends State<CasePage> {
     'accepted': 'Condition identified',
     'uncertain': 'Not sure — check the plant in person',
     'retake': 'Photo unclear — please take another',
-    'unsupported': 'No crop plant found in this photo',
+    'unsupported': 'No plant found in this photo',
     'unavailable': 'AI analysis is not set up',
   };
 
